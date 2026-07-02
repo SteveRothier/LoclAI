@@ -11,7 +11,9 @@ type MessageListProps = {
   streaming: boolean;
   streamingContent: string;
   onCopy: (content: string) => void;
+  onEdit: (messageId: string, newContent: string) => void;
   onRegenerate: (messageId: string) => void;
+  disabled?: boolean;
 };
 
 export function MessageList({
@@ -19,7 +21,9 @@ export function MessageList({
   streaming,
   streamingContent,
   onCopy,
+  onEdit,
   onRegenerate,
+  disabled = false,
 }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -55,7 +59,13 @@ export function MessageList({
           <MessageBubble
             key={message.id}
             message={message}
+            disabled={disabled}
             onCopy={() => onCopy(message.content)}
+            onEdit={
+              message.role === "user"
+                ? (newContent) => onEdit(message.id, newContent)
+                : undefined
+            }
             onRegenerate={
               message.role === "assistant"
                 ? () => onRegenerate(message.id)

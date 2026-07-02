@@ -36,7 +36,7 @@ export function ChatView({ conversationId }: ChatViewProps) {
   const inputDraft = useChatStore((s) => s.inputDraft);
   const online = useOllamaStore((s) => s.online);
 
-  const { sendMessage, regenerateFrom } = useChatActions(conversationId);
+  const { sendMessage, regenerateFrom, editUserMessage } = useChatActions(conversationId);
 
   useEffect(() => {
     void getConversation(conversationId).then((c) => setConversation(c ?? null));
@@ -168,7 +168,9 @@ export function ChatView({ conversationId }: ChatViewProps) {
         messages={messages}
         streaming={streaming}
         streamingContent={streamingContent}
+        disabled={streaming}
         onCopy={handleCopy}
+        onEdit={(id, content) => void editUserMessage(id, content)}
         onRegenerate={(id) => void regenerateFrom(id)}
       />
 

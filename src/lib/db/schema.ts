@@ -141,6 +141,16 @@ export async function addMessage(
   return message;
 }
 
+export async function updateMessage(id: string, content: string): Promise<void> {
+  const message = await db.messages.get(id);
+  if (!message) return;
+
+  await db.transaction("rw", db.conversations, db.messages, async () => {
+    await db.messages.update(id, { content });
+    await db.conversations.update(message.conversationId, { updatedAt: Date.now() });
+  });
+}
+
 export async function deleteMessage(id: string): Promise<void> {
   await db.messages.delete(id);
 }

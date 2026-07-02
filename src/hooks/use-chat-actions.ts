@@ -7,6 +7,7 @@ import {
   getConversation,
   getMessages,
   updateConversation,
+  updateMessage,
   type Conversation,
   type Message,
 } from "@/lib/db/schema";
@@ -57,6 +58,43 @@ async function ensureModelAvailable(model: string): Promise<string | null> {
   return null;
 }
 
+async function streamAssistantReply(
+  conversationId: string,
+  conversation: Conversation,
+  endpointUrl: string
+): Promise<void> {
+  const messagesForContext = await getMessages(conversationId);
+  const ollamaMessages = buildOllamaMessages(conversation, messagesForContext);
+
+  const controller = new AbortController();
+  useChatStore.getState().setAbortController(controller);
+  useChatStore.getState().setStreaming(true);
+  useChatStore.getState().setStreamingContent("");
+
+  try {
+    const result = await fetchChatStream({
+      baseUrl: endpointUrl,
+      model: conversation.model,
+      messages: ollamaMessages,
+      temperature: conversation.temperature,
+      signal: controller.signal,
+      onToken: (text) => useChatStore.getState().setStreamingContent(text),
+    });
+
+    if (result.content.trim()) {
+      await addMessage(conversationId, "assistant", result.content);
+    }
+  } catch (error) {
+    if (!controller.signal.aborted) {
+      const message = error instanceof Error ? error.message : "Erreur inconnue";
+      await addMessage(conversationId, "assistant", `⚠️ Erreur : ${message}`);
+    }
+  } finally {
+    useChatStore.getState().resetStream();
+    useConversationsRefreshStore.getState().bump();
+  }
+}
+
 export function useChatActions(conversationId: string | null) {
   const endpointUrl = useOllamaStore((s) => s.endpointUrl);
   const online = useOllamaStore((s) => s.online);
@@ -88,41 +126,7 @@ export function useChatActions(conversationId: string | null) {
         useConversationsRefreshStore.getState().bump();
       }
 
-      const messagesAfterUser = await getMessages(conversationId);
-      const ollamaMessages = buildOllamaMessages(conversation, messagesAfterUser);
-
-      const controller = new AbortController();
-      useChatStore.getState().setAbortController(controller);
-      useChatStore.getState().setStreaming(true);
-      useChatStore.getState().setStreamingContent("");
-
-      try {
-        const result = await fetchChatStream({
-          baseUrl: endpointUrl,
-          model: conversation.model,
-          messages: ollamaMessages,
-          temperature: conversation.temperature,
-          signal: controller.signal,
-          onToken: (text) => useChatStore.getState().setStreamingContent(text),
-        });
-
-        if (result.content.trim()) {
-          await addMessage(conversationId, "assistant", result.content);
-        }
-      } catch (error) {
-        if (!controller.signal.aborted) {
-          const message =
-            error instanceof Error ? error.message : "Erreur inconnue";
-          await addMessage(
-            conversationId,
-            "assistant",
-            `⚠️ Erreur : ${message}`
-          );
-        }
-      } finally {
-        useChatStore.getState().resetStream();
-        useConversationsRefreshStore.getState().bump();
-      }
+      await streamAssistantReply(conversationId, conversation, endpointUrl);
     },
     [conversationId, endpointUrl, online]
   );
@@ -148,44 +152,45 @@ export function useChatActions(conversationId: string | null) {
       const target = allMessages[targetIndex];
       await deleteMessagesAfter(conversationId, target.createdAt - 1);
 
-      const messagesForContext = await getMessages(conversationId);
-      const ollamaMessages = buildOllamaMessages(conversation, messagesForContext);
-
-      const controller = new AbortController();
-      useChatStore.getState().setAbortController(controller);
-      useChatStore.getState().setStreaming(true);
-      useChatStore.getState().setStreamingContent("");
-
-      try {
-        const result = await fetchChatStream({
-          baseUrl: endpointUrl,
-          model: conversation.model,
-          messages: ollamaMessages,
-          temperature: conversation.temperature,
-          signal: controller.signal,
-          onToken: (text) => useChatStore.getState().setStreamingContent(text),
-        });
-
-        if (result.content.trim()) {
-          await addMessage(conversationId, "assistant", result.content);
-        }
-      } catch (error) {
-        if (!controller.signal.aborted) {
-          const message =
-            error instanceof Error ? error.message : "Erreur inconnue";
-          await addMessage(
-            conversationId,
-            "assistant",
-            `⚠️ Erreur : ${message}`
-          );
-        }
-      } finally {
-        useChatStore.getState().resetStream();
-        useConversationsRefreshStore.getState().bump();
-      }
+      await streamAssistantReply(conversationId, conversation, endpointUrl);
     },
     [conversationId, endpointUrl, online]
   );
 
-  return { sendMessage, regenerateFrom };
+  const editUserMessage = useCallback(
+    async (messageId: string, newContent: string) => {
+      if (!conversationId || !online) return;
+
+      const trimmed = newContent.trim();
+      if (!trimmed) return;
+
+      const conversation = await getConversation(conversationId);
+      if (!conversation) return;
+
+      const modelError = await ensureModelAvailable(conversation.model);
+      if (modelError) {
+        await addMessage(conversationId, "assistant", `⚠️ Erreur : ${modelError}`);
+        useConversationsRefreshStore.getState().bump();
+        return;
+      }
+
+      const allMessages = await getMessages(conversationId);
+      const target = allMessages.find((m) => m.id === messageId);
+      if (!target || target.role !== "user") return;
+
+      await updateMessage(messageId, trimmed);
+      await deleteMessagesAfter(conversationId, target.createdAt);
+
+      const isFirstMessage = allMessages[0]?.id === messageId;
+      if (isFirstMessage) {
+        await autoTitleFromFirstMessage(conversationId, trimmed);
+        useConversationsRefreshStore.getState().bump();
+      }
+
+      await streamAssistantReply(conversationId, conversation, endpointUrl);
+    },
+    [conversationId, endpointUrl, online]
+  );
+
+  return { sendMessage, regenerateFrom, editUserMessage };
 }
