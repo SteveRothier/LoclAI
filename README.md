@@ -1,36 +1,95 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# LoclAI — Chat IA local via Ollama
 
-## Getting Started
+Alternative à ChatGPT **100 % locale** : l'interface peut être déployée sur Vercel, mais **toutes les conversations et l'inférence restent sur votre machine**.
 
-First, run the development server:
+- Inférence via [Ollama](https://ollama.com) (`http://127.0.0.1:11434`)
+- Historique stocké dans **IndexedDB** (navigateur) — zéro persistance cloud
+- Streaming token par token, gestion multi-conversations, export/import JSON
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Démarrage rapide
+
+### Prérequis
+
+- Node.js 20+
+- [Ollama](https://ollama.com/download) installé et lancé
+
+```powershell
+ollama pull llama3.2
+ollama serve
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Installation
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```powershell
+cd loclai
+npm install
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+→ [http://localhost:3000](http://localhost:3000)
 
-## Learn More
+En local, le navigateur contacte Ollama directement — aucune configuration CORS nécessaire.
 
-To learn more about Next.js, take a look at the following resources:
+## Déploiement Vercel + Ollama local
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Quand l'app est hébergée sur Vercel, le serveur Vercel **ne peut pas** joindre `127.0.0.1` sur votre PC. L'app appelle donc Ollama **depuis votre navigateur**.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Checklist
 
-## Deploy on Vercel
+1. Déployer sur Vercel (`vercel deploy` ou push Git)
+2. Sur votre PC, autoriser l'origine Vercel dans Ollama :
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```powershell
+$env:OLLAMA_ORIGINS="https://votre-app.vercel.app"
+ollama serve
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+3. Ouvrir l'URL Vercel **depuis le même PC** où Ollama tourne
+4. Vérifier le badge **Ollama actif** dans la sidebar
+
+### Variables d'environnement (optionnelles)
+
+| Variable | Description |
+|----------|-------------|
+| `NEXT_PUBLIC_OLLAMA_URL` | URL Ollama par défaut |
+| `NEXT_PUBLIC_DEFAULT_OLLAMA_MODEL` | Modèle par défaut (ex. `llama3.2`) |
+
+## Fonctionnalités MVP
+
+- Chat streaming avec annulation
+- Conversations : créer, renommer, supprimer, rechercher
+- Sélecteur de modèle (liste `/api/tags`)
+- System prompt et température par conversation
+- Copier / régénérer les réponses assistant
+- Export / import JSON des conversations
+- Badge **Zero Cloud** — rappel que les données restent locales
+
+## Architecture
+
+```
+Navigateur (UI Vercel ou localhost)
+  ├── IndexedDB  → conversations, messages, paramètres
+  └── fetch      → Ollama local :11434 (/api/chat, /api/tags)
+```
+
+## Scripts
+
+```powershell
+npm run dev      # développement
+npm run build    # build production
+npm run start    # serveur production
+npm run lint     # ESLint
+```
+
+## Stack
+
+Next.js 16 · React 19 · TypeScript · Tailwind 4 · Dexie · Zustand · react-markdown
+
+## Roadmap (v2+)
+
+- Fork de conversation
+- Assistants / personas
+- Métriques tokens/s
+- PWA offline complète
+- RAG documents locaux
+- Mode comparaison multi-modèles
