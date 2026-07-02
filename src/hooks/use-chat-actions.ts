@@ -10,7 +10,12 @@ import {
   type Conversation,
   type Message,
 } from "@/lib/db/schema";
-import { fetchChatStream, type OllamaMessage } from "@/lib/ollama/client";
+import {
+  fetchChatStream,
+  formatModelNotFoundError,
+  isModelAvailable,
+  type OllamaMessage,
+} from "@/lib/ollama/client";
 import { useConversationsRefreshStore } from "@/stores/conversations-store";
 import { useChatStore } from "@/stores/chat-store";
 import { useOllamaStore } from "@/stores/ollama-store";
@@ -41,6 +46,17 @@ async function autoTitleFromFirstMessage(
   });
 }
 
+async function ensureModelAvailable(model: string): Promise<string | null> {
+  await useOllamaStore.getState().refresh();
+  const models = useOllamaStore.getState().models;
+
+  if (!isModelAvailable(model, models)) {
+    return formatModelNotFoundError(model, models);
+  }
+
+  return null;
+}
+
 export function useChatActions(conversationId: string | null) {
   const endpointUrl = useOllamaStore((s) => s.endpointUrl);
   const online = useOllamaStore((s) => s.online);
@@ -51,6 +67,13 @@ export function useChatActions(conversationId: string | null) {
 
       const conversation = await getConversation(conversationId);
       if (!conversation) return;
+
+      const modelError = await ensureModelAvailable(conversation.model);
+      if (modelError) {
+        await addMessage(conversationId, "assistant", `⚠️ Erreur : ${modelError}`);
+        useConversationsRefreshStore.getState().bump();
+        return;
+      }
 
       const trimmed = content.trim();
       useChatStore.getState().setInputDraft("");
@@ -110,6 +133,13 @@ export function useChatActions(conversationId: string | null) {
 
       const conversation = await getConversation(conversationId);
       if (!conversation) return;
+
+      const modelError = await ensureModelAvailable(conversation.model);
+      if (modelError) {
+        await addMessage(conversationId, "assistant", `⚠️ Erreur : ${modelError}`);
+        useConversationsRefreshStore.getState().bump();
+        return;
+      }
 
       const allMessages = await getMessages(conversationId);
       const targetIndex = allMessages.findIndex((m) => m.id === assistantMessageId);

@@ -2,10 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Download, Upload } from "lucide-react";
+import { ArrowLeft, Download, Upload, Wifi } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { testConnection } from "@/lib/ollama/client";
+import { normalizeOllamaEndpointUrl } from "@/lib/ollama/config";
 import { useSettingsStore } from "@/stores/settings-store";
 import {
   exportAllData,
@@ -19,6 +21,7 @@ export default function SettingsPage() {
   const load = useSettingsStore((s) => s.load);
   const fileRef = useRef<HTMLInputElement>(null);
   const [status, setStatus] = useState<string | null>(null);
+  const [testing, setTesting] = useState(false);
 
   useEffect(() => {
     void load();
@@ -69,6 +72,30 @@ export default function SettingsPage() {
     }
   };
 
+  const handleTestConnection = async () => {
+    setTesting(true);
+    setStatus(null);
+    try {
+      const result = await testConnection(
+        settings.ollamaUrl,
+        settings.defaultModel
+      );
+      if (result.ok) {
+        setStatus(
+          `Connexion OK — ${result.models.length} modèle(s) détecté(s), chat fonctionnel avec « ${settings.defaultModel} ».`
+        );
+      } else {
+        setStatus(result.error ?? "Test de connexion échoué.");
+      }
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  const urlWarning =
+    settings.ollamaUrl.includes("/api") ||
+    !normalizeOllamaEndpointUrl(settings.ollamaUrl);
+
   return (
     <div className="flex-1 overflow-y-auto bg-background px-8 py-10">
       <div className="mx-auto max-w-2xl space-y-10">
@@ -98,6 +125,12 @@ export default function SettingsPage() {
               onChange={(e) => void update({ ollamaUrl: e.target.value })}
               placeholder="http://127.0.0.1:11434"
             />
+            {urlWarning && (
+              <p className="mt-1.5 text-xs text-amber-600">
+                Utilisez l&apos;URL de base sans <code>/api</code>, par ex.{" "}
+                <code>http://127.0.0.1:11434</code>
+              </p>
+            )}
           </div>
           <div>
             <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
@@ -106,9 +139,29 @@ export default function SettingsPage() {
             <Input
               value={settings.defaultModel}
               onChange={(e) => void update({ defaultModel: e.target.value })}
-              placeholder="llama3.2"
+              placeholder="qwen3.5:4b"
             />
           </div>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => void handleTestConnection()}
+            disabled={testing}
+          >
+            <Wifi className="size-4" />
+            {testing ? "Test en cours…" : "Tester la connexion"}
+          </Button>
+          {status && (
+            <p
+              className={`text-sm ${
+                status.startsWith("Connexion OK")
+                  ? "text-primary"
+                  : "text-muted-foreground"
+              }`}
+            >
+              {status}
+            </p>
+          )}
           <div>
             <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
               Température par défaut ({settings.defaultTemperature})
@@ -182,7 +235,6 @@ ollama serve`}
               }}
             />
           </div>
-          {status && <p className="text-sm text-muted-foreground">{status}</p>}
         </section>
       </div>
     </div>

@@ -54,7 +54,7 @@ export const db = new LoclAIDB();
 export const DEFAULT_SETTINGS: AppSettings = {
   id: "settings",
   ollamaUrl: "http://127.0.0.1:11434",
-  defaultModel: "llama3.2",
+  defaultModel: "qwen3.5:4b",
   defaultTemperature: 0.7,
   defaultSystemPrompt: "Tu es un assistant IA utile, précis et concis. Réponds en français sauf demande contraire.",
 };
