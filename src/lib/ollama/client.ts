@@ -194,6 +194,112 @@ export async function testConnection(
   }
 }
 
+export type PullProgress = {
+  status: string;
+  percent?: number;
+};
+
+export function formatModelSize(bytes: number): string {
+  if (!bytes || bytes <= 0) return "—";
+  const units = ["o", "Ko", "Mo", "Go", "To"];
+  let size = bytes;
+  let unitIndex = 0;
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024;
+    unitIndex += 1;
+  }
+  return `${size.toFixed(unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
+}
+
+export async function pullModel(
+  baseUrl: string,
+  model: string,
+  onProgress: (progress: PullProgress) => void,
+  signal?: AbortSignal
+): Promise<void> {
+  const url = effectiveOllamaEndpoint(baseUrl);
+  const trimmed = model.trim();
+  if (!trimmed) throw new Error("Nom de modèle requis");
+
+  const response = await fetch(`${url}/api/pull`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ model: trimmed, stream: true }),
+    signal,
+  });
+
+  if (!response.ok) {
+    throw new Error(await parseOllamaErrorResponse(response));
+  }
+
+  if (!response.body) {
+    throw new Error("Flux de téléchargement vide");
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+      if (!trimmedLine) continue;
+
+      try {
+        const chunk = JSON.parse(trimmedLine) as {
+          status?: string;
+          completed?: number;
+          total?: number;
+          error?: string;
+        };
+
+        if (chunk.error) {
+          throw new Error(chunk.error);
+        }
+
+        const status = chunk.status ?? "Téléchargement…";
+        let percent: number | undefined;
+        if (
+          typeof chunk.completed === "number" &&
+          typeof chunk.total === "number" &&
+          chunk.total > 0
+        ) {
+          percent = Math.min(100, Math.round((chunk.completed / chunk.total) * 100));
+        }
+
+        onProgress({ status, percent });
+      } catch (error) {
+        if (error instanceof Error && error.message !== "Unexpected end of JSON input") {
+          throw error;
+        }
+      }
+    }
+  }
+}
+
+export async function deleteModel(baseUrl: string, model: string): Promise<void> {
+  const url = effectiveOllamaEndpoint(baseUrl);
+  const trimmed = model.trim();
+  if (!trimmed) throw new Error("Nom de modèle requis");
+
+  const response = await fetch(`${url}/api/delete`, {
+    method: "DELETE",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ model: trimmed }),
+  });
+
+  if (!response.ok) {
+    throw new Error(await parseOllamaErrorResponse(response));
+  }
+}
+
 export async function fetchChatStream({
   baseUrl,
   model,

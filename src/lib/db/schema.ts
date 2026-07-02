@@ -24,6 +24,7 @@ export type AppSettings = {
   defaultModel: string;
   defaultTemperature: number;
   defaultSystemPrompt: string;
+  disabledModels: string[];
 };
 
 export type ExportPayload = {
@@ -57,11 +58,12 @@ export const DEFAULT_SETTINGS: AppSettings = {
   defaultModel: "qwen3.5:4b",
   defaultTemperature: 0.7,
   defaultSystemPrompt: "Tu es un assistant IA utile, précis et concis. Réponds en français sauf demande contraire.",
+  disabledModels: [],
 };
 
 export async function getSettings(): Promise<AppSettings> {
   const existing = await db.settings.get("settings");
-  return existing ?? DEFAULT_SETTINGS;
+  return { ...DEFAULT_SETTINGS, ...existing, disabledModels: existing?.disabledModels ?? [] };
 }
 
 export async function saveSettings(settings: Omit<AppSettings, "id">): Promise<void> {
@@ -193,4 +195,18 @@ export async function importAllData(payload: ExportPayload): Promise<void> {
 
 export async function getLastConversation(): Promise<Conversation | undefined> {
   return db.conversations.orderBy("updatedAt").reverse().first();
+}
+
+export async function countConversationsUsingModel(model: string): Promise<number> {
+  const all = await db.conversations.toArray();
+  return all.filter((c) => c.model === model).length;
+}
+
+export async function updateDefaultModelIfNeeded(
+  deletedModel: string,
+  fallback: string
+): Promise<void> {
+  const settings = await getSettings();
+  if (settings.defaultModel !== deletedModel) return;
+  await saveSettings({ ...settings, defaultModel: fallback });
 }

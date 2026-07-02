@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { testConnection } from "@/lib/ollama/client";
 import { normalizeOllamaEndpointUrl } from "@/lib/ollama/config";
 import { useSettingsStore } from "@/stores/settings-store";
+import { ModelManager } from "@/components/ollama/ModelManager";
 import {
   exportAllData,
   importAllData,
@@ -191,6 +192,8 @@ export default function SettingsPage() {
             />
           </div>
         </section>
+
+        <ModelManager onStatus={setStatus} />
 
         <section className="space-y-4 rounded-xl border border-border p-6">
           <h2 className="font-semibold text-foreground">

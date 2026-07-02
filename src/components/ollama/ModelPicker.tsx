@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect } from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { getEnabledModelNames } from "@/lib/ollama/models";
 import { useOllamaStore } from "@/stores/ollama-store";
+import { useSettingsStore } from "@/stores/settings-store";
 import { cn } from "@/lib/utils";
 
 type ModelPickerProps = {
@@ -15,28 +17,36 @@ type ModelPickerProps = {
 export function ModelPicker({ value, onChange, disabled }: ModelPickerProps) {
   const models = useOllamaStore((s) => s.models);
   const online = useOllamaStore((s) => s.online);
+  const disabledModels = useSettingsStore((s) => s.settings?.disabledModels ?? []);
 
   useEffect(() => {
     void useOllamaStore.getState().refresh();
   }, []);
 
-  const modelNames = models.map((m) => m.name);
+  const enabledNames = getEnabledModelNames(models, disabledModels);
+  const selectValue = enabledNames.includes(value) ? value : (enabledNames[0] ?? "");
+
+  useEffect(() => {
+    if (selectValue && selectValue !== value) {
+      onChange(selectValue);
+    }
+  }, [selectValue, value, onChange]);
 
   return (
     <div className="relative">
       <select
-        value={value}
+        value={selectValue}
         onChange={(e) => onChange(e.target.value)}
-        disabled={disabled || !online || modelNames.length === 0}
+        disabled={disabled || !online || enabledNames.length === 0}
         className={cn(
           "h-9 appearance-none rounded-lg border border-border bg-background pl-3 pr-8 text-sm outline-none focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/15 disabled:cursor-not-allowed disabled:opacity-50"
         )}
       >
         {!online && <option value={value}>{value || "Ollama hors ligne"}</option>}
-        {online && modelNames.length === 0 && (
-          <option value={value}>{value || "Aucun modèle"}</option>
+        {online && enabledNames.length === 0 && (
+          <option value="">{value || "Aucun modèle actif"}</option>
         )}
-        {modelNames.map((name) => (
+        {enabledNames.map((name) => (
           <option key={name} value={name}>
             {name}
           </option>
@@ -48,6 +58,8 @@ export function ModelPicker({ value, onChange, disabled }: ModelPickerProps) {
 }
 
 export function ModelPickerButton({ value, onChange, disabled }: ModelPickerProps) {
+  const refreshing = useOllamaStore((s) => s.refreshing);
+
   return (
     <div className="flex items-center gap-2">
       <span className="text-xs text-muted-foreground">Modèle</span>
@@ -58,9 +70,9 @@ export function ModelPickerButton({ value, onChange, disabled }: ModelPickerProp
         size="icon-sm"
         onClick={() => void useOllamaStore.getState().refresh()}
         title="Rafraîchir les modèles"
-        disabled={disabled}
+        disabled={disabled || refreshing}
       >
-        ↻
+        <RefreshCw className={cn("size-4", refreshing && "animate-spin")} />
       </Button>
     </div>
   );
