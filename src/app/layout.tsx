@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Geist_Mono } from "next/font/google";
 import { AppShell } from "@/components/layout/AppShell";
 import "./globals.css";
+import "highlight.js/styles/github-dark.min.css";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -14,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "LoclAI — Chat IA local",
+  title: "LoclAI",
   description:
     "Alternative à ChatGPT entièrement hors ligne. Conversations et inférence via Ollama sur votre machine.",
   manifest: "/manifest.json",

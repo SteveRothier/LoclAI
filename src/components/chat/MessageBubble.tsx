@@ -30,10 +30,10 @@ export function MessageBubble({
     >
       <div
         className={cn(
-          "relative max-w-[85%] sm:max-w-[75%]",
+          "relative",
           isUser
-            ? "rounded-2xl bg-muted px-4 py-3"
-            : "px-1 py-1"
+            ? "max-w-[85%] rounded-2xl bg-muted px-4 py-3 sm:max-w-[75%]"
+            : "w-full max-w-3xl px-1 py-1"
         )}
       >
         {isUser ? (
@@ -80,7 +80,7 @@ export function MessageBubble({
 export function StreamingBubble({ content }: { content: string }) {
   return (
     <div className="flex w-full justify-start">
-      <div className="max-w-[85%] px-1 py-1 sm:max-w-[75%]">
+      <div className="w-full max-w-3xl px-1 py-1">
         {content ? (
           <MarkdownContent content={content} />
         ) : (
