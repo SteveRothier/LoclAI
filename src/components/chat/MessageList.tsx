@@ -2,6 +2,8 @@
 
 import { useEffect, useRef } from "react";
 import { MessageBubble, StreamingBubble } from "@/components/chat/MessageBubble";
+import { CHAT_CONTENT_CLASS, CHAT_PADDING_CLASS } from "@/lib/chat-layout";
+import { cn } from "@/lib/utils";
 import type { Message } from "@/lib/db/schema";
 
 type MessageListProps = {
@@ -42,21 +44,28 @@ export function MessageList({
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-6 overflow-y-auto px-6 py-8 scrollbar-thin md:px-10">
-      {messages.map((message) => (
-        <MessageBubble
-          key={message.id}
-          message={message}
-          onCopy={() => onCopy(message.content)}
-          onRegenerate={
-            message.role === "assistant"
-              ? () => onRegenerate(message.id)
-              : undefined
-          }
-        />
-      ))}
-      {streaming && <StreamingBubble content={streamingContent} />}
-      <div ref={bottomRef} />
+    <div
+      className={cn(
+        "flex flex-1 flex-col overflow-y-auto py-6 scrollbar-thin sm:py-8",
+        CHAT_PADDING_CLASS
+      )}
+    >
+      <div className={cn(CHAT_CONTENT_CLASS, "flex flex-col gap-6")}>
+        {messages.map((message) => (
+          <MessageBubble
+            key={message.id}
+            message={message}
+            onCopy={() => onCopy(message.content)}
+            onRegenerate={
+              message.role === "assistant"
+                ? () => onRegenerate(message.id)
+                : undefined
+            }
+          />
+        ))}
+        {streaming && <StreamingBubble content={streamingContent} />}
+        <div ref={bottomRef} />
+      </div>
     </div>
   );
 }

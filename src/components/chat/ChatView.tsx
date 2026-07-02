@@ -20,6 +20,8 @@ import { useChatActions } from "@/hooks/use-chat-actions";
 import { useChatStore } from "@/stores/chat-store";
 import { useOllamaStore } from "@/stores/ollama-store";
 import { useConversationsRefreshStore } from "@/stores/conversations-store";
+import { CHAT_PADDING_CLASS } from "@/lib/chat-layout";
+import { cn } from "@/lib/utils";
 
 type ChatViewProps = {
   conversationId: string;
@@ -66,7 +68,12 @@ export function ChatView({ conversationId }: ChatViewProps) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-background">
-      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-border px-6 py-4">
+      <header
+        className={cn(
+          "flex shrink-0 items-center justify-between gap-3 border-b border-border py-4",
+          CHAT_PADDING_CLASS
+        )}
+      >
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-base font-semibold text-foreground">
             {conversation.title}
@@ -92,7 +99,12 @@ export function ChatView({ conversationId }: ChatViewProps) {
       </header>
 
       {showSettings && (
-        <div className="shrink-0 space-y-4 border-b border-border bg-muted/30 px-6 py-5">
+        <div
+          className={cn(
+            "shrink-0 space-y-4 border-b border-border bg-muted/30 py-5",
+            CHAT_PADDING_CLASS
+          )}
+        >
           <div>
             <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
               Titre
@@ -139,7 +151,12 @@ export function ChatView({ conversationId }: ChatViewProps) {
       )}
 
       {!online && (
-        <div className="shrink-0 border-b border-primary/20 bg-primary/5 px-6 py-2.5 text-sm text-foreground">
+        <div
+          className={cn(
+            "shrink-0 border-b border-primary/20 bg-primary/5 py-2.5 text-sm text-foreground",
+            CHAT_PADDING_CLASS
+          )}
+        >
           Ollama est hors ligne.{" "}
           <Link href="/settings" className="font-medium text-primary hover:underline">
             Vérifier la configuration

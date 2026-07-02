@@ -3,6 +3,7 @@
 import { useRef, useEffect } from "react";
 import { Send, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { CHAT_CONTENT_CLASS, CHAT_PADDING_CLASS } from "@/lib/chat-layout";
 import { cn } from "@/lib/utils";
 
 type ChatInputProps = {
@@ -40,8 +41,8 @@ export function ChatInput({
   };
 
   return (
-    <div className="shrink-0 border-t border-border bg-background px-6 py-5">
-      <div className="mx-auto flex max-w-3xl items-end gap-3">
+    <div className={cn("shrink-0 border-t border-border bg-background py-4 sm:py-5", CHAT_PADDING_CLASS)}>
+      <div className={cn(CHAT_CONTENT_CLASS, "flex items-end gap-3")}>
         <textarea
           ref={ref}
           value={value}
@@ -80,7 +81,7 @@ export function ChatInput({
           </Button>
         )}
       </div>
-      <p className="mx-auto mt-2 max-w-3xl text-center text-xs text-muted-foreground">
+      <p className={cn(CHAT_CONTENT_CLASS, "mt-2 text-center text-xs text-muted-foreground")}>
         Entrée pour envoyer · Maj+Entrée pour un saut de ligne
       </p>
     </div>
