@@ -1,10 +1,12 @@
 # LoclAI — Chat IA local via Ollama
 
-Alternative à ChatGPT **100 % locale** : l'interface peut être déployée sur Vercel, mais **toutes les conversations et l'inférence restent sur votre machine**.
+**LoclAI** est une interface de chat pour discuter avec des modèles d'IA exécutés localement via [Ollama](https://ollama.com). Vos conversations, vos paramètres et vos modèles restent sur votre machine — rien n'est envoyé vers un service cloud.
 
-- Inférence via [Ollama](https://ollama.com) (`http://127.0.0.1:11434`)
-- Historique stocké dans **IndexedDB** (navigateur) — zéro persistance cloud
-- Streaming token par token, gestion multi-conversations, export/import JSON
+Le navigateur affiche l'interface et sert de pont vers Ollama (`http://127.0.0.1:11434`). L'historique est conservé dans **IndexedDB**, directement dans le navigateur.
+
+- Chat en streaming, multi-conversations, export/import JSON
+- Gestion des modèles : recherche, téléchargement, désactivation, suppression
+- System prompt configurables par conversation
 
 ## Démarrage rapide
 
@@ -14,7 +16,7 @@ Alternative à ChatGPT **100 % locale** : l'interface peut être déployée sur 
 - [Ollama](https://ollama.com/download) installé et lancé
 
 ```powershell
-ollama pull llama3.2
+ollama pull qwen3.5:4b
 ollama serve
 ```
 
@@ -29,6 +31,15 @@ npm run dev
 → [http://localhost:3000](http://localhost:3000)
 
 En local, le navigateur contacte Ollama directement — aucune configuration CORS nécessaire.
+
+## Paramètres
+
+Dans **Paramètres**, vous pouvez :
+
+- configurer l'URL Ollama et le modèle par défaut
+- **rechercher** des modèles sur la bibliothèque Ollama et les **télécharger** (`pull`)
+- **désactiver** un modèle (masqué du chat, mais toujours installé)
+- **supprimer** un modèle de la machine
 
 ## Déploiement Vercel + Ollama local
 
@@ -52,24 +63,27 @@ ollama serve
 | Variable | Description |
 |----------|-------------|
 | `NEXT_PUBLIC_OLLAMA_URL` | URL Ollama par défaut |
-| `NEXT_PUBLIC_DEFAULT_OLLAMA_MODEL` | Modèle par défaut (ex. `llama3.2`) |
+| `NEXT_PUBLIC_DEFAULT_OLLAMA_MODEL` | Modèle par défaut (ex. `qwen3.5:4b`) |
 
-## Fonctionnalités MVP
+## Fonctionnalités
 
 - Chat streaming avec annulation
 - Conversations : créer, renommer, supprimer, rechercher
-- Sélecteur de modèle (liste `/api/tags`)
-- System prompt et température par conversation
+- Sélecteur de modèle (modèles installés et actifs)
+- Modification et copie des messages
+- Blocs de code avec coloration syntaxique
+- System prompt par conversation
 - Copier / régénérer les réponses assistant
+- Gestion des modèles Ollama (recherche, pull, désactivation, suppression)
 - Export / import JSON des conversations
 - Badge **Zero Cloud** — rappel que les données restent locales
 
 ## Architecture
 
 ```
-Navigateur (UI Vercel ou localhost)
+Navigateur
   ├── IndexedDB  → conversations, messages, paramètres
-  └── fetch      → Ollama local :11434 (/api/chat, /api/tags)
+  └── fetch      → Ollama local :11434 (/api/chat, /api/tags, /api/pull, /api/delete)
 ```
 
 ## Scripts
