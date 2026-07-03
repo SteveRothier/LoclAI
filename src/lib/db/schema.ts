@@ -5,7 +5,6 @@ export type Conversation = {
   title: string;
   model: string;
   systemPrompt: string;
-  temperature: number;
   createdAt: number;
   updatedAt: number;
 };
@@ -22,7 +21,6 @@ export type AppSettings = {
   id: "settings";
   ollamaUrl: string;
   defaultModel: string;
-  defaultTemperature: number;
   defaultSystemPrompt: string;
   disabledModels: string[];
 };
@@ -56,7 +54,6 @@ export const DEFAULT_SETTINGS: AppSettings = {
   id: "settings",
   ollamaUrl: "http://127.0.0.1:11434",
   defaultModel: "qwen3.5:4b",
-  defaultTemperature: 0.7,
   defaultSystemPrompt: "Tu es un assistant IA utile, précis et concis. Réponds en français sauf demande contraire.",
   disabledModels: [],
 };
@@ -80,7 +77,6 @@ export async function createConversation(
     title: partial?.title ?? "Nouvelle conversation",
     model: partial?.model ?? settings.defaultModel,
     systemPrompt: partial?.systemPrompt ?? settings.defaultSystemPrompt,
-    temperature: partial?.temperature ?? settings.defaultTemperature,
     createdAt: now,
     updatedAt: now,
   };

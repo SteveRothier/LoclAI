@@ -29,7 +29,6 @@ export type ChatStreamOptions = {
   baseUrl: string;
   model: string;
   messages: OllamaMessage[];
-  temperature?: number;
   signal?: AbortSignal;
   onToken: (content: string) => void;
 };
@@ -304,7 +303,6 @@ export async function fetchChatStream({
   baseUrl,
   model,
   messages,
-  temperature = 0.7,
   signal,
   onToken,
 }: ChatStreamOptions): Promise<ChatStreamResult> {
@@ -318,7 +316,6 @@ export async function fetchChatStream({
       model,
       messages,
       stream: true,
-      options: { temperature },
     }),
     signal,
   });

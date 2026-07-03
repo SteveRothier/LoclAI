@@ -165,22 +165,6 @@ export default function SettingsPage() {
           )}
           <div>
             <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
-              Température par défaut ({settings.defaultTemperature})
-            </label>
-            <input
-              type="range"
-              min={0}
-              max={1}
-              step={0.05}
-              value={settings.defaultTemperature}
-              onChange={(e) =>
-                void update({ defaultTemperature: Number(e.target.value) })
-              }
-              className="w-full accent-primary"
-            />
-          </div>
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
               System prompt par défaut
             </label>
             <Textarea

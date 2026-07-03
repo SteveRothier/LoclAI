@@ -76,7 +76,6 @@ async function streamAssistantReply(
       baseUrl: endpointUrl,
       model: conversation.model,
       messages: ollamaMessages,
-      temperature: conversation.temperature,
       signal: controller.signal,
       onToken: (text) => useChatStore.getState().setStreamingContent(text),
     });

@@ -128,25 +128,6 @@ export function ChatView({ conversationId }: ChatViewProps) {
               rows={3}
             />
           </div>
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
-              Température ({conversation.temperature})
-            </label>
-            <input
-              type="range"
-              min={0}
-              max={1}
-              step={0.05}
-              value={conversation.temperature}
-              onChange={(e) => {
-                const temperature = Number(e.target.value);
-                setConversation({ ...conversation, temperature });
-              }}
-              onMouseUp={() => void updateConv({ temperature: conversation.temperature })}
-              onTouchEnd={() => void updateConv({ temperature: conversation.temperature })}
-              className="w-full accent-primary"
-            />
-          </div>
         </div>
       )}
 
