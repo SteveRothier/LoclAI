@@ -310,6 +310,7 @@ export function ModelManager({ onStatus }: ModelManagerProps) {
         confirmLabel="Supprimer"
         cancelLabel="Annuler"
         loading={!!deleting}
+        loadingLabel="Suppression…"
         onConfirm={confirmDelete}
       />
     </>

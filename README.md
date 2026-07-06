@@ -56,7 +56,7 @@ ollama serve
 ```
 
 3. Ouvrir l'URL Vercel **depuis le même PC** où Ollama tourne
-4. Vérifier le badge **Ollama actif** dans la sidebar
+4. Vérifier le statut Ollama dans l'en-tête du chat
 
 ### Variables d'environnement (optionnelles)
 
@@ -68,7 +68,7 @@ ollama serve
 ## Fonctionnalités
 
 - Chat streaming avec annulation
-- Conversations : créer, renommer, supprimer, rechercher
+- Conversations : créer, renommer, dupliquer, supprimer, rechercher
 - Sélecteur de modèle (modèles installés et actifs)
 - Modification et copie des messages
 - Blocs de code avec coloration syntaxique
@@ -76,7 +76,6 @@ ollama serve
 - Copier / régénérer les réponses assistant
 - Gestion des modèles Ollama (recherche, pull, désactivation, suppression)
 - Export / import JSON des conversations
-- Badge **Zero Cloud** — rappel que les données restent locales
 
 ## Architecture
 
@@ -93,6 +92,7 @@ npm run dev      # développement
 npm run build    # build production
 npm run start    # serveur production
 npm run lint     # ESLint
+npm test         # tests unitaires (Vitest)
 ```
 
 ## Stack
@@ -101,7 +101,6 @@ Next.js 16 · React 19 · TypeScript · Tailwind 4 · Dexie · Zustand · react-
 
 ## Roadmap (v2+)
 
-- Fork de conversation
 - Assistants / personas
 - Métriques tokens/s
 - PWA offline complète

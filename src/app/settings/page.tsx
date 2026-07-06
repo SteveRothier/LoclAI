@@ -4,8 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Download, Upload, Wifi } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { ModelPicker } from "@/components/ollama/ModelPicker";
 import { testConnection } from "@/lib/ollama/client";
 import { normalizeOllamaEndpointUrl } from "@/lib/ollama/config";
 import { useSettingsStore } from "@/stores/settings-store";
@@ -23,6 +25,8 @@ export default function SettingsPage() {
   const fileRef = useRef<HTMLInputElement>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [testing, setTesting] = useState(false);
+  const [importPayload, setImportPayload] = useState<ExportPayload | null>(null);
+  const [importing, setImporting] = useState(false);
 
   useEffect(() => {
     void load();
@@ -50,26 +54,35 @@ export default function SettingsPage() {
     setStatus("Export téléchargé.");
   };
 
-  const handleImport = async (file: File) => {
+  const handleImportFile = async (file: File) => {
     try {
       const text = await file.text();
       const payload = JSON.parse(text) as ExportPayload;
       if (payload.version !== 1 || !Array.isArray(payload.conversations)) {
         throw new Error("Format de fichier invalide");
       }
-      if (
-        !confirm(
-          "Importer remplacera toutes les conversations existantes. Continuer ?"
-        )
-      ) {
-        return;
-      }
-      await importAllData(payload);
+      setImportPayload(payload);
+    } catch (error) {
+      setStatus(
+        error instanceof Error ? error.message : "Erreur lors de l'import"
+      );
+    }
+  };
+
+  const confirmImport = async () => {
+    if (!importPayload) return;
+
+    setImporting(true);
+    try {
+      await importAllData(importPayload);
+      setImportPayload(null);
       setStatus("Import réussi. Rechargez la page si nécessaire.");
     } catch (error) {
       setStatus(
         error instanceof Error ? error.message : "Erreur lors de l'import"
       );
+    } finally {
+      setImporting(false);
     }
   };
 
@@ -137,10 +150,9 @@ export default function SettingsPage() {
             <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
               Modèle par défaut
             </label>
-            <Input
+            <ModelPicker
               value={settings.defaultModel}
-              onChange={(e) => void update({ defaultModel: e.target.value })}
-              placeholder="qwen3.5:4b"
+              onChange={(model) => void update({ defaultModel: model })}
             />
           </div>
           <Button
@@ -217,13 +229,31 @@ ollama serve`}
               className="hidden"
               onChange={(e) => {
                 const file = e.target.files?.[0];
-                if (file) void handleImport(file);
+                if (file) void handleImportFile(file);
                 e.target.value = "";
               }}
             />
           </div>
         </section>
       </div>
+
+      <ConfirmDialog
+        open={!!importPayload}
+        onOpenChange={(open) => {
+          if (!open && !importing) setImportPayload(null);
+        }}
+        title="Importer les données ?"
+        description="Cette action remplacera toutes les conversations et paramètres existants."
+        warnings={[
+          importPayload
+            ? `${importPayload.conversations.length} conversation(s) seront importées.`
+            : "",
+        ].filter(Boolean)}
+        confirmLabel="Importer"
+        loadingLabel="Import…"
+        loading={importing}
+        onConfirm={confirmImport}
+      />
     </div>
   );
 }

@@ -52,7 +52,11 @@ export function ChatView({ conversationId }: ChatViewProps) {
   };
 
   const updateConv = async (updates: Partial<Conversation>) => {
-    await updateConversation(conversationId, updates);
+    const next = { ...updates };
+    if ("title" in updates) {
+      next.titleAuto = false;
+    }
+    await updateConversation(conversationId, next);
     const updated = await getConversation(conversationId);
     setConversation(updated ?? null);
     useConversationsRefreshStore.getState().bump();

@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
 import { useOllamaStore } from "@/stores/ollama-store";
 import { cn } from "@/lib/utils";
@@ -8,12 +7,6 @@ import { cn } from "@/lib/utils";
 export function OllamaStatusBadge({ compact = false }: { compact?: boolean }) {
   const online = useOllamaStore((s) => s.online);
   const error = useOllamaStore((s) => s.error);
-
-  useEffect(() => {
-    void useOllamaStore.getState().init();
-    useOllamaStore.getState().startPolling();
-    return () => useOllamaStore.getState().stopPolling();
-  }, []);
 
   if (compact) {
     return (

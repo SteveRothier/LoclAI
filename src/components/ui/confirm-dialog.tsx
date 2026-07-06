@@ -14,6 +14,7 @@ type ConfirmDialogProps = {
   confirmLabel?: string;
   cancelLabel?: string;
   loading?: boolean;
+  loadingLabel?: string;
   onConfirm: () => void | Promise<void>;
 };
 
@@ -26,6 +27,7 @@ export function ConfirmDialog({
   confirmLabel = "Confirmer",
   cancelLabel = "Annuler",
   loading = false,
+  loadingLabel = "En cours…",
   onConfirm,
 }: ConfirmDialogProps) {
   const panelRef = useRef<HTMLDivElement>(null);
@@ -124,7 +126,7 @@ export function ConfirmDialog({
                 disabled={loading}
                 className="bg-destructive text-white hover:bg-destructive/90"
               >
-                {loading ? "Suppression…" : confirmLabel}
+                {loading ? loadingLabel : confirmLabel}
               </Button>
             </div>
           </div>

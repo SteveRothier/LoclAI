@@ -5,6 +5,7 @@ export type Conversation = {
   title: string;
   model: string;
   systemPrompt: string;
+  titleAuto: boolean;
   createdAt: number;
   updatedAt: number;
 };
@@ -77,6 +78,7 @@ export async function createConversation(
     title: partial?.title ?? "Nouvelle conversation",
     model: partial?.model ?? settings.defaultModel,
     systemPrompt: partial?.systemPrompt ?? settings.defaultSystemPrompt,
+    titleAuto: partial?.titleAuto ?? true,
     createdAt: now,
     updatedAt: now,
   };
@@ -99,7 +101,9 @@ export async function deleteConversation(id: string): Promise<void> {
 }
 
 export async function getConversation(id: string): Promise<Conversation | undefined> {
-  return db.conversations.get(id);
+  const conversation = await db.conversations.get(id);
+  if (!conversation) return undefined;
+  return { ...conversation, titleAuto: conversation.titleAuto ?? true };
 }
 
 export async function listConversations(): Promise<Conversation[]> {
@@ -191,6 +195,42 @@ export async function importAllData(payload: ExportPayload): Promise<void> {
 
 export async function getLastConversation(): Promise<Conversation | undefined> {
   return db.conversations.orderBy("updatedAt").reverse().first();
+}
+
+export async function forkConversation(id: string): Promise<Conversation> {
+  const source = await getConversation(id);
+  if (!source) throw new Error("Conversation introuvable");
+
+  const messages = await getMessages(id);
+  const now = Date.now();
+  const newId = crypto.randomUUID();
+
+  const conversation: Conversation = {
+    id: newId,
+    title: `${source.title} (copie)`,
+    model: source.model,
+    systemPrompt: source.systemPrompt,
+    titleAuto: false,
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  const copiedMessages: Message[] = messages.map((message) => ({
+    id: crypto.randomUUID(),
+    conversationId: newId,
+    role: message.role,
+    content: message.content,
+    createdAt: message.createdAt,
+  }));
+
+  await db.transaction("rw", db.conversations, db.messages, async () => {
+    await db.conversations.add(conversation);
+    if (copiedMessages.length > 0) {
+      await db.messages.bulkAdd(copiedMessages);
+    }
+  });
+
+  return conversation;
 }
 
 export async function countConversationsUsingModel(model: string): Promise<number> {

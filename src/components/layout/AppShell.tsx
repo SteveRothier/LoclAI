@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { Sidebar } from "@/components/sidebar/Sidebar";
 import { useSettingsStore } from "@/stores/settings-store";
+import { useOllamaStore } from "@/stores/ollama-store";
 import { initUIStore, useUIStore } from "@/stores/ui-store";
 import { cn } from "@/lib/utils";
 
@@ -15,6 +16,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     initUIStore();
     void useSettingsStore.getState().load();
+    void useOllamaStore.getState().init();
+    useOllamaStore.getState().startPolling();
+    return () => useOllamaStore.getState().stopPolling();
   }, []);
 
   return (

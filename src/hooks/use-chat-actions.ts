@@ -11,6 +11,7 @@ import {
   type Conversation,
   type Message,
 } from "@/lib/db/schema";
+import { generateConversationTitle } from "@/lib/chat/title";
 import {
   fetchChatStream,
   formatModelNotFoundError,
@@ -37,14 +38,24 @@ function buildOllamaMessages(
   return result;
 }
 
-async function autoTitleFromFirstMessage(
+async function maybeGenerateConversationTitle(
   conversationId: string,
-  userContent: string
+  conversation: Conversation,
+  userContent: string,
+  assistantContent: string,
+  endpointUrl: string
 ): Promise<void> {
-  const title = userContent.trim().slice(0, 48) || "Nouvelle conversation";
-  await updateConversation(conversationId, {
-    title: title.length >= 48 ? `${title}…` : title,
-  });
+  if (conversation.titleAuto === false) return;
+
+  const title = await generateConversationTitle(
+    endpointUrl,
+    conversation.model,
+    userContent,
+    assistantContent
+  );
+
+  await updateConversation(conversationId, { title, titleAuto: true });
+  useConversationsRefreshStore.getState().bump();
 }
 
 async function ensureModelAvailable(model: string): Promise<string | null> {
@@ -62,7 +73,7 @@ async function streamAssistantReply(
   conversationId: string,
   conversation: Conversation,
   endpointUrl: string
-): Promise<void> {
+): Promise<string> {
   const messagesForContext = await getMessages(conversationId);
   const ollamaMessages = buildOllamaMessages(conversation, messagesForContext);
 
@@ -70,6 +81,8 @@ async function streamAssistantReply(
   useChatStore.getState().setAbortController(controller);
   useChatStore.getState().setStreaming(true);
   useChatStore.getState().setStreamingContent("");
+
+  let assistantContent = "";
 
   try {
     const result = await fetchChatStream({
@@ -80,14 +93,20 @@ async function streamAssistantReply(
       onToken: (text) => useChatStore.getState().setStreamingContent(text),
     });
 
-    if (result.content.trim()) {
-      await addMessage(conversationId, "assistant", result.content);
+    assistantContent = result.content;
+
+    if (assistantContent.trim()) {
+      await addMessage(conversationId, "assistant", assistantContent);
     }
+
+    return assistantContent;
   } catch (error) {
     if (!controller.signal.aborted) {
       const message = error instanceof Error ? error.message : "Erreur inconnue";
-      await addMessage(conversationId, "assistant", `⚠️ Erreur : ${message}`);
+      assistantContent = `⚠️ Erreur : ${message}`;
+      await addMessage(conversationId, "assistant", assistantContent);
     }
+    return assistantContent;
   } finally {
     useChatStore.getState().resetStream();
     useConversationsRefreshStore.getState().bump();
@@ -120,12 +139,21 @@ export function useChatActions(conversationId: string | null) {
 
       await addMessage(conversationId, "user", trimmed);
 
-      if (isFirstMessage) {
-        await autoTitleFromFirstMessage(conversationId, trimmed);
-        useConversationsRefreshStore.getState().bump();
-      }
+      const assistantContent = await streamAssistantReply(
+        conversationId,
+        conversation,
+        endpointUrl
+      );
 
-      await streamAssistantReply(conversationId, conversation, endpointUrl);
+      if (isFirstMessage && assistantContent.trim() && !assistantContent.startsWith("⚠️")) {
+        await maybeGenerateConversationTitle(
+          conversationId,
+          conversation,
+          trimmed,
+          assistantContent,
+          endpointUrl
+        );
+      }
     },
     [conversationId, endpointUrl, online]
   );
@@ -177,16 +205,26 @@ export function useChatActions(conversationId: string | null) {
       const target = allMessages.find((m) => m.id === messageId);
       if (!target || target.role !== "user") return;
 
+      const isFirstMessage = allMessages[0]?.id === messageId;
+
       await updateMessage(messageId, trimmed);
       await deleteMessagesAfter(conversationId, target.createdAt);
 
-      const isFirstMessage = allMessages[0]?.id === messageId;
-      if (isFirstMessage) {
-        await autoTitleFromFirstMessage(conversationId, trimmed);
-        useConversationsRefreshStore.getState().bump();
-      }
+      const assistantContent = await streamAssistantReply(
+        conversationId,
+        conversation,
+        endpointUrl
+      );
 
-      await streamAssistantReply(conversationId, conversation, endpointUrl);
+      if (isFirstMessage && assistantContent.trim() && !assistantContent.startsWith("⚠️")) {
+        await maybeGenerateConversationTitle(
+          conversationId,
+          conversation,
+          trimmed,
+          assistantContent,
+          endpointUrl
+        );
+      }
     },
     [conversationId, endpointUrl, online]
   );

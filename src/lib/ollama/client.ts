@@ -38,6 +38,13 @@ export type ChatStreamResult = {
   aborted: boolean;
 };
 
+export type ChatOnceOptions = {
+  baseUrl: string;
+  model: string;
+  messages: OllamaMessage[];
+  signal?: AbortSignal;
+};
+
 export function isModelAvailable(
   model: string,
   models: OllamaModel[]
@@ -368,4 +375,34 @@ export async function fetchChatStream({
   }
 
   return { content, aborted: false };
+}
+
+export async function fetchChatOnce({
+  baseUrl,
+  model,
+  messages,
+  signal,
+}: ChatOnceOptions): Promise<string> {
+  const url = effectiveOllamaEndpoint(baseUrl);
+
+  const response = await fetch(`${url}/api/chat`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model,
+      messages,
+      stream: false,
+    }),
+    signal,
+  });
+
+  if (!response.ok) {
+    throw new Error(await parseOllamaErrorResponse(response));
+  }
+
+  const data = (await response.json()) as {
+    message?: { content?: string };
+  };
+
+  return data.message?.content?.trim() ?? "";
 }
