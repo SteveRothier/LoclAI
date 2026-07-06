@@ -82,7 +82,7 @@ export function ChatInput({
         )}
       </div>
       <p className={cn(CHAT_CONTENT_CLASS, "mt-2 text-center text-xs text-muted-foreground")}>
-        Entrée pour envoyer · Maj+Entrée pour un saut de ligne
+        Les modèles peuvent faire des erreurs. Envisagez de vérifier les informations importantes.
       </p>
     </div>
   );
