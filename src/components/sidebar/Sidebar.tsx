@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
+import { SectionLoading } from "@/components/ui/loader";
 import { ConversationMenu } from "@/components/sidebar/ConversationMenu";
 import { useConversations } from "@/lib/db/hooks";
 import {
@@ -239,7 +240,13 @@ export function Sidebar() {
 
         <div className="mt-2 flex-1 overflow-y-auto px-2 pb-2 scrollbar-thin">
           {loading && (
-            <p className="px-3 py-4 text-sm text-sidebar-muted">Chargement…</p>
+            <div className="px-3 py-4">
+              <SectionLoading
+                inline
+                tone="sidebar-muted"
+                className="text-sidebar-muted"
+              />
+            </div>
           )}
           {!loading && conversations.length === 0 && (
             <p className="px-3 py-4 text-sm text-sidebar-muted">Aucune conversation</p>

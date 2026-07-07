@@ -5,6 +5,7 @@ import { Check, Copy, Pencil, RotateCcw, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { MarkdownContent } from "@/components/chat/MarkdownContent";
+import { Loader } from "@/components/ui/loader";
 import { cn } from "@/lib/utils";
 import type { Message } from "@/lib/db/schema";
 
@@ -197,10 +198,8 @@ export function StreamingBubble({ content }: { content: string }) {
         {content ? (
           <MarkdownContent content={content} />
         ) : (
-          <div className="flex items-center gap-1.5 py-2 text-muted-foreground">
-            <span className="size-2 animate-pulse rounded-full bg-primary" />
-            <span className="size-2 animate-pulse rounded-full bg-primary [animation-delay:150ms]" />
-            <span className="size-2 animate-pulse rounded-full bg-primary [animation-delay:300ms]" />
+          <div className="py-2">
+            <Loader variant="ellipsis" size="md" tone="primary" />
           </div>
         )}
       </div>

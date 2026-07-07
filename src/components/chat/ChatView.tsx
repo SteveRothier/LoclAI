@@ -6,6 +6,7 @@ import { ChatInput } from "@/components/chat/ChatInput";
 import { MessageList } from "@/components/chat/MessageList";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { SectionLoading } from "@/components/ui/loader";
 import { useMessages } from "@/lib/db/hooks";
 import {
   getConversation,
@@ -25,6 +26,7 @@ type ChatViewProps = {
 
 export function ChatView({ conversationId }: ChatViewProps) {
   const [conversation, setConversation] = useState<Conversation | null>(null);
+  const [loading, setLoading] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const { messages } = useMessages(conversationId);
   const streaming = useChatStore((s) => s.streaming);
@@ -35,7 +37,11 @@ export function ChatView({ conversationId }: ChatViewProps) {
   const { sendMessage, regenerateFrom, editUserMessage } = useChatActions(conversationId);
 
   useEffect(() => {
-    void getConversation(conversationId).then((c) => setConversation(c ?? null));
+    setLoading(true);
+    void getConversation(conversationId).then((c) => {
+      setConversation(c ?? null);
+      setLoading(false);
+    });
   }, [conversationId]);
 
   const handleCopy = useCallback(async (content: string) => {
@@ -58,10 +64,14 @@ export function ChatView({ conversationId }: ChatViewProps) {
     useConversationsRefreshStore.getState().bump();
   };
 
+  if (loading) {
+    return <SectionLoading />;
+  }
+
   if (!conversation) {
     return (
       <div className="flex flex-1 items-center justify-center text-muted-foreground">
-        Chargement…
+        Conversation introuvable.
       </div>
     );
   }

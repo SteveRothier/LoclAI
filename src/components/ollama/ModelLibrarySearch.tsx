@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Download, ExternalLink, Loader2, Search } from "lucide-react";
+import { Download, ExternalLink, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Loader } from "@/components/ui/loader";
 import {
   getMainLibraryTags,
   getOllamaLibraryModelTags,
@@ -138,7 +139,7 @@ export function ModelLibrarySearch({
           />
 
           {(searching || loadingTags) && (
-            <Loader2 className="absolute top-1/2 right-3 size-4 -translate-y-1/2 animate-spin text-muted-foreground" />
+            <Loader variant="ring" size="sm" tone="muted" className="absolute top-1/2 right-3 -translate-y-1/2" />
           )}
 
           {showResults && (

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Loader } from "@/components/ui/loader";
 import { getEnabledModelNames } from "@/lib/ollama/models";
 import { useOllamaStore } from "@/stores/ollama-store";
 import { useSettingsStore } from "@/stores/settings-store";
@@ -219,7 +220,11 @@ export function ModelPickerButton({ value, onChange, disabled }: ModelPickerProp
         title="Rafraîchir les modèles"
         disabled={disabled || refreshing}
       >
-        <RefreshCw className={cn("size-4", refreshing && "animate-spin")} />
+        {refreshing ? (
+          <Loader variant="ring" size="sm" />
+        ) : (
+          <RefreshCw className="size-4" />
+        )}
       </Button>
     </div>
   );

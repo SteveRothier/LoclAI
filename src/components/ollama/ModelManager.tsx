@@ -6,6 +6,7 @@ import { fr } from "date-fns/locale";
 import { Eye, EyeOff, RefreshCw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Loader } from "@/components/ui/loader";
 import { ModelLibrarySearch } from "@/components/ollama/ModelLibrarySearch";
 import { formatModelSize } from "@/lib/ollama/client";
 import { getEnabledModelNames, isModelDisabled } from "@/lib/ollama/models";
@@ -223,7 +224,11 @@ export function ModelManager({ onStatus }: ModelManagerProps) {
             disabled={!online || pulling || refreshing}
             title="Rafraîchir la liste"
           >
-            <RefreshCw className={cn("size-4", refreshing && "animate-spin")} />
+            {refreshing ? (
+              <Loader variant="ring" size="sm" />
+            ) : (
+              <RefreshCw className="size-4" />
+            )}
           </Button>
         </div>
 
