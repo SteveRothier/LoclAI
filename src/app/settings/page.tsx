@@ -12,6 +12,8 @@ import { testConnection } from "@/lib/ollama/client";
 import { normalizeOllamaEndpointUrl } from "@/lib/ollama/config";
 import { useSettingsStore } from "@/stores/settings-store";
 import { ModelManager } from "@/components/ollama/ModelManager";
+import { PersonasEditor } from "@/components/settings/PersonasEditor";
+import { SectionLoading } from "@/components/ui/loader";
 import {
   exportAllData,
   importAllData,
@@ -33,11 +35,7 @@ export default function SettingsPage() {
   }, [load]);
 
   if (!settings) {
-    return (
-      <div className="flex flex-1 items-center justify-center text-muted-foreground">
-        Chargement…
-      </div>
-    );
+    return <SectionLoading />;
   }
 
   const handleExport = async () => {
@@ -177,6 +175,26 @@ export default function SettingsPage() {
           )}
           <div>
             <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
+              Messages max. dans le contexte
+            </label>
+            <Input
+              type="number"
+              min={4}
+              max={200}
+              value={settings.maxContextMessages}
+              onChange={(e) => {
+                const value = Number.parseInt(e.target.value, 10);
+                if (!Number.isNaN(value)) {
+                  void update({ maxContextMessages: Math.min(200, Math.max(4, value)) });
+                }
+              }}
+            />
+            <p className="mt-1.5 text-xs text-muted-foreground">
+              Nombre de messages user/assistant envoyés au modèle (les plus anciens sont exclus).
+            </p>
+          </div>
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
               System prompt par défaut
             </label>
             <Textarea
@@ -187,6 +205,19 @@ export default function SettingsPage() {
               rows={4}
             />
           </div>
+        </section>
+
+        <section className="space-y-4 rounded-xl border border-border p-6">
+          <div>
+            <h2 className="font-semibold text-foreground">Assistants / personas</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Profils réutilisables pour démarrer une conversation avec un rôle prédéfini.
+            </p>
+          </div>
+          <PersonasEditor
+            personas={settings.personas}
+            onChange={(personas) => void update({ personas })}
+          />
         </section>
 
         <ModelManager onStatus={setStatus} />

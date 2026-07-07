@@ -20,6 +20,7 @@ type ChatInputProps = {
   showSettings: boolean;
   onToggleSettings: () => void;
   settingsPanel?: ReactNode;
+  contextNotice?: string;
 };
 
 export function ChatInput({
@@ -35,6 +36,7 @@ export function ChatInput({
   showSettings,
   onToggleSettings,
   settingsPanel,
+  contextNotice,
 }: ChatInputProps) {
   const ref = useRef<HTMLTextAreaElement>(null);
 
@@ -54,6 +56,10 @@ export function ChatInput({
   return (
     <div className={cn("shrink-0 bg-background py-4 sm:py-5", CHAT_PADDING_CLASS)}>
       <div className={CHAT_CONTENT_CLASS}>
+        {contextNotice && (
+          <p className="mb-2 text-center text-xs text-amber-700">{contextNotice}</p>
+        )}
+
         {showSettings && settingsPanel && (
           <div className="mb-3 space-y-4 rounded-xl border border-border bg-muted/30 p-4">
             {settingsPanel}
@@ -132,7 +138,7 @@ export function ChatInput({
 
         <p className="mt-2 text-center text-xs text-muted-foreground">
           Les modèles peuvent faire des erreurs. Envisagez de vérifier les informations
-          importantes.
+          importantes. · Entrée pour envoyer · Maj+Entrée pour un saut de ligne
         </p>
       </div>
     </div>

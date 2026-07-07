@@ -1,17 +1,21 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { MessageList } from "@/components/chat/MessageList";
+import { PersonaSelect } from "@/components/chat/PersonaSelect";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { SectionLoading } from "@/components/ui/loader";
+import { trimMessagesForContext } from "@/lib/chat/context";
 import { useMessages } from "@/lib/db/hooks";
 import {
   getConversation,
+  getSettings,
   updateConversation,
   type Conversation,
+  type Persona,
 } from "@/lib/db/schema";
 import { useChatActions } from "@/hooks/use-chat-actions";
 import { useChatStore } from "@/stores/chat-store";
@@ -26,11 +30,14 @@ type ChatViewProps = {
 
 export function ChatView({ conversationId }: ChatViewProps) {
   const [conversation, setConversation] = useState<Conversation | null>(null);
+  const [personas, setPersonas] = useState<Persona[]>([]);
+  const [maxContextMessages, setMaxContextMessages] = useState(40);
   const [loading, setLoading] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const { messages } = useMessages(conversationId);
   const streaming = useChatStore((s) => s.streaming);
   const streamingContent = useChatStore((s) => s.streamingContent);
+  const excludedContextCount = useChatStore((s) => s.excludedContextCount);
   const inputDraft = useChatStore((s) => s.inputDraft);
   const online = useOllamaStore((s) => s.online);
 
@@ -38,11 +45,21 @@ export function ChatView({ conversationId }: ChatViewProps) {
 
   useEffect(() => {
     setLoading(true);
-    void getConversation(conversationId).then((c) => {
-      setConversation(c ?? null);
-      setLoading(false);
-    });
+    void Promise.all([getConversation(conversationId), getSettings()]).then(
+      ([conversationResult, settings]) => {
+        setConversation(conversationResult ?? null);
+        setPersonas(settings.personas);
+        setMaxContextMessages(settings.maxContextMessages);
+        setLoading(false);
+      }
+    );
   }, [conversationId]);
+
+  const projectedExcludedCount = useMemo(() => {
+    return trimMessagesForContext(messages, maxContextMessages).excludedCount;
+  }, [messages, maxContextMessages]);
+
+  const contextExcludedCount = Math.max(excludedContextCount, projectedExcludedCount);
 
   const handleCopy = useCallback(async (content: string) => {
     await navigator.clipboard.writeText(content);
@@ -70,8 +87,11 @@ export function ChatView({ conversationId }: ChatViewProps) {
 
   if (!conversation) {
     return (
-      <div className="flex flex-1 items-center justify-center text-muted-foreground">
-        Conversation introuvable.
+      <div className="flex flex-1 flex-col items-center justify-center gap-3 text-muted-foreground">
+        <p className="text-sm">Conversation introuvable.</p>
+        <Link href="/" className="text-sm font-medium text-primary hover:underline">
+          Retour à l&apos;accueil
+        </Link>
       </div>
     );
   }
@@ -113,8 +133,27 @@ export function ChatView({ conversationId }: ChatViewProps) {
         onModelChange={(model) => void updateConv({ model })}
         showSettings={showSettings}
         onToggleSettings={() => setShowSettings((v) => !v)}
+        contextNotice={
+          contextExcludedCount > 0
+            ? `${contextExcludedCount} message${contextExcludedCount > 1 ? "s" : ""} plus ancien${contextExcludedCount > 1 ? "s" : ""} exclus du contexte`
+            : undefined
+        }
         settingsPanel={
           <>
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
+                Assistant
+              </label>
+              <PersonaSelect
+                personas={personas}
+                value={conversation.systemPrompt}
+                disabled={streaming}
+                onChange={(persona) => {
+                  setConversation({ ...conversation, systemPrompt: persona.systemPrompt });
+                  void updateConv({ systemPrompt: persona.systemPrompt });
+                }}
+              />
+            </div>
             <div>
               <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
                 Titre

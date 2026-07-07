@@ -1,11 +1,25 @@
 import Dexie, { type EntityTable } from "dexie";
 
+export type MessageMetrics = {
+  promptTokens: number;
+  completionTokens: number;
+  durationMs: number;
+};
+
+export type Persona = {
+  id: string;
+  name: string;
+  systemPrompt: string;
+};
+
 export type Conversation = {
   id: string;
   title: string;
   model: string;
   systemPrompt: string;
   titleAuto: boolean;
+  pinned: boolean;
+  pinnedAt?: number;
   createdAt: number;
   updatedAt: number;
 };
@@ -16,6 +30,7 @@ export type Message = {
   role: "user" | "assistant" | "system";
   content: string;
   createdAt: number;
+  metrics?: MessageMetrics;
 };
 
 export type AppSettings = {
@@ -24,6 +39,8 @@ export type AppSettings = {
   defaultModel: string;
   defaultSystemPrompt: string;
   disabledModels: string[];
+  maxContextMessages: number;
+  personas: Persona[];
 };
 
 export type ExportPayload = {
@@ -33,6 +50,33 @@ export type ExportPayload = {
   messages: Message[];
   settings: AppSettings | null;
 };
+
+export const DEFAULT_PERSONAS: Persona[] = [
+  {
+    id: "general",
+    name: "Assistant général",
+    systemPrompt:
+      "Tu es un assistant IA utile, précis et concis. Réponds en français sauf demande contraire.",
+  },
+  {
+    id: "developer",
+    name: "Développeur",
+    systemPrompt:
+      "Tu es un développeur senior. Donne du code propre, explique brièvement, et propose des bonnes pratiques.",
+  },
+  {
+    id: "writer",
+    name: "Rédacteur",
+    systemPrompt:
+      "Tu es un rédacteur professionnel. Améliore la clarté, le ton et la structure des textes en français.",
+  },
+  {
+    id: "analyst",
+    name: "Analyste",
+    systemPrompt:
+      "Tu es un analyste rigoureux. Structure tes réponses, cite les hypothèses et reste factuel.",
+  },
+];
 
 class LoclAIDB extends Dexie {
   conversations!: EntityTable<Conversation, "id">;
@@ -46,6 +90,11 @@ class LoclAIDB extends Dexie {
       messages: "id, conversationId, createdAt, [conversationId+createdAt]",
       settings: "id",
     });
+    this.version(2).stores({
+      conversations: "id, updatedAt, createdAt, title, pinned, pinnedAt",
+      messages: "id, conversationId, createdAt, [conversationId+createdAt]",
+      settings: "id",
+    });
   }
 }
 
@@ -55,13 +104,32 @@ export const DEFAULT_SETTINGS: AppSettings = {
   id: "settings",
   ollamaUrl: "http://127.0.0.1:11434",
   defaultModel: "qwen3.5:4b",
-  defaultSystemPrompt: "Tu es un assistant IA utile, précis et concis. Réponds en français sauf demande contraire.",
+  defaultSystemPrompt: DEFAULT_PERSONAS[0].systemPrompt,
   disabledModels: [],
+  maxContextMessages: 40,
+  personas: DEFAULT_PERSONAS,
 };
+
+function normalizeConversation(conversation: Conversation): Conversation {
+  return {
+    ...conversation,
+    titleAuto: conversation.titleAuto ?? true,
+    pinned: conversation.pinned ?? false,
+  };
+}
 
 export async function getSettings(): Promise<AppSettings> {
   const existing = await db.settings.get("settings");
-  return { ...DEFAULT_SETTINGS, ...existing, disabledModels: existing?.disabledModels ?? [] };
+  return {
+    ...DEFAULT_SETTINGS,
+    ...existing,
+    disabledModels: existing?.disabledModels ?? [],
+    maxContextMessages: existing?.maxContextMessages ?? DEFAULT_SETTINGS.maxContextMessages,
+    personas:
+      existing?.personas && existing.personas.length > 0
+        ? existing.personas
+        : DEFAULT_SETTINGS.personas,
+  };
 }
 
 export async function saveSettings(settings: Omit<AppSettings, "id">): Promise<void> {
@@ -79,6 +147,8 @@ export async function createConversation(
     model: partial?.model ?? settings.defaultModel,
     systemPrompt: partial?.systemPrompt ?? settings.defaultSystemPrompt,
     titleAuto: partial?.titleAuto ?? true,
+    pinned: partial?.pinned ?? false,
+    pinnedAt: partial?.pinnedAt,
     createdAt: now,
     updatedAt: now,
   };
@@ -103,11 +173,24 @@ export async function deleteConversation(id: string): Promise<void> {
 export async function getConversation(id: string): Promise<Conversation | undefined> {
   const conversation = await db.conversations.get(id);
   if (!conversation) return undefined;
-  return { ...conversation, titleAuto: conversation.titleAuto ?? true };
+  return normalizeConversation(conversation);
+}
+
+function sortConversations(conversations: Conversation[]): Conversation[] {
+  return [...conversations].sort((a, b) => {
+    const aPinned = a.pinned ?? false;
+    const bPinned = b.pinned ?? false;
+    if (aPinned !== bPinned) return aPinned ? -1 : 1;
+    if (aPinned && bPinned) {
+      return (b.pinnedAt ?? 0) - (a.pinnedAt ?? 0);
+    }
+    return b.updatedAt - a.updatedAt;
+  });
 }
 
 export async function listConversations(): Promise<Conversation[]> {
-  return db.conversations.orderBy("updatedAt").reverse().toArray();
+  const all = await db.conversations.toArray();
+  return sortConversations(all.map(normalizeConversation));
 }
 
 export async function searchConversations(query: string): Promise<Conversation[]> {
@@ -127,7 +210,8 @@ export async function getMessages(conversationId: string): Promise<Message[]> {
 export async function addMessage(
   conversationId: string,
   role: Message["role"],
-  content: string
+  content: string,
+  metrics?: MessageMetrics
 ): Promise<Message> {
   const message: Message = {
     id: crypto.randomUUID(),
@@ -135,6 +219,7 @@ export async function addMessage(
     role,
     content,
     createdAt: Date.now(),
+    metrics,
   };
   await db.transaction("rw", db.conversations, db.messages, async () => {
     await db.messages.add(message);
@@ -167,6 +252,17 @@ export async function deleteMessagesAfter(
     .delete();
 }
 
+export async function toggleConversationPin(id: string): Promise<void> {
+  const conversation = await getConversation(id);
+  if (!conversation) return;
+
+  const pinned = !conversation.pinned;
+  await updateConversation(id, {
+    pinned,
+    pinnedAt: pinned ? Date.now() : undefined,
+  });
+}
+
 export async function exportAllData(): Promise<ExportPayload> {
   const [conversations, messages, settings] = await Promise.all([
     db.conversations.toArray(),
@@ -176,7 +272,7 @@ export async function exportAllData(): Promise<ExportPayload> {
   return {
     version: 1,
     exportedAt: new Date().toISOString(),
-    conversations,
+    conversations: conversations.map(normalizeConversation),
     messages,
     settings,
   };
@@ -187,14 +283,17 @@ export async function importAllData(payload: ExportPayload): Promise<void> {
     await db.conversations.clear();
     await db.messages.clear();
     await db.settings.clear();
-    if (payload.conversations.length) await db.conversations.bulkAdd(payload.conversations);
+    if (payload.conversations.length) {
+      await db.conversations.bulkAdd(payload.conversations.map(normalizeConversation));
+    }
     if (payload.messages.length) await db.messages.bulkAdd(payload.messages);
     if (payload.settings) await db.settings.put(payload.settings);
   });
 }
 
 export async function getLastConversation(): Promise<Conversation | undefined> {
-  return db.conversations.orderBy("updatedAt").reverse().first();
+  const list = await listConversations();
+  return list[0];
 }
 
 export async function forkConversation(id: string): Promise<Conversation> {
@@ -211,6 +310,7 @@ export async function forkConversation(id: string): Promise<Conversation> {
     model: source.model,
     systemPrompt: source.systemPrompt,
     titleAuto: false,
+    pinned: false,
     createdAt: now,
     updatedAt: now,
   };
@@ -221,6 +321,7 @@ export async function forkConversation(id: string): Promise<Conversation> {
     role: message.role,
     content: message.content,
     createdAt: message.createdAt,
+    metrics: message.metrics,
   }));
 
   await db.transaction("rw", db.conversations, db.messages, async () => {

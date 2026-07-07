@@ -21,6 +21,7 @@ import {
   createConversation,
   deleteConversation,
   forkConversation,
+  toggleConversationPin,
   updateConversation,
 } from "@/lib/db/schema";
 import { cn } from "@/lib/utils";
@@ -107,6 +108,20 @@ export function Sidebar() {
     router.push(`/c/${forked.id}`);
   };
 
+  const handleTogglePin = async (id: string) => {
+    await toggleConversationPin(id);
+    useConversationsRefreshStore.getState().bump();
+    setOpenMenuId(null);
+  };
+
+  const isSearching = search.trim().length > 0;
+  const pinnedConversations = isSearching
+    ? []
+    : conversations.filter((conv) => conv.pinned);
+  const recentConversations = isSearching
+    ? conversations
+    : conversations.filter((conv) => !conv.pinned);
+
   const startRename = (id: string, title: string) => {
     setOpenMenuId(null);
     setEditingId(id);
@@ -128,6 +143,55 @@ export function Sidebar() {
       window.setTimeout(() => searchRef.current?.focus(), 220);
     });
   };
+
+  const renderConversation = (conv: (typeof conversations)[number]) => (
+    <li key={conv.id}>
+      {editingId === conv.id ? (
+        <Input
+          variant="sidebar"
+          autoFocus
+          value={editTitle}
+          onChange={(e) => setEditTitle(e.target.value)}
+          onBlur={() => void commitRename(conv.id)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") void commitRename(conv.id);
+            if (e.key === "Escape") setEditingId(null);
+          }}
+          className="mx-1 h-8"
+        />
+      ) : (
+        <div
+          className={cn(
+            "group relative rounded-lg transition-colors",
+            activeId === conv.id ? "bg-sidebar-active" : "hover:bg-sidebar-accent",
+            openMenuId === conv.id && "bg-sidebar-accent"
+          )}
+        >
+          <Link
+            href={`/c/${conv.id}`}
+            title={conv.title}
+            className={cn(
+              "block w-full truncate px-3 py-2 text-sm font-medium transition-[padding]",
+              "group-hover:pr-9",
+              openMenuId === conv.id && "pr-9",
+              activeId === conv.id ? "text-white" : "text-sidebar-muted"
+            )}
+          >
+            {conv.title}
+          </Link>
+          <ConversationMenu
+            open={openMenuId === conv.id}
+            pinned={conv.pinned}
+            onOpenChange={(open) => setOpenMenuId(open ? conv.id : null)}
+            onRename={() => startRename(conv.id, conv.title)}
+            onDuplicate={() => void handleFork(conv.id)}
+            onTogglePin={() => void handleTogglePin(conv.id)}
+            onDelete={() => openDeleteDialog(conv.id, conv.title)}
+          />
+        </div>
+      )}
+    </li>
+  );
 
   if (!sidebarOpen) {
     return (
@@ -232,9 +296,23 @@ export function Sidebar() {
           </div>
         </div>
 
+        {pinnedConversations.length > 0 && (
+          <div className="mt-4 px-5">
+            <p className="text-[10px] font-medium tracking-widest text-sidebar-muted uppercase">
+              Épinglées
+            </p>
+          </div>
+        )}
+
+        {pinnedConversations.length > 0 && (
+          <div className="mt-2 px-2">
+            <ul className="space-y-0.5">{pinnedConversations.map(renderConversation)}</ul>
+          </div>
+        )}
+
         <div className="mt-4 px-5">
           <p className="text-[10px] font-medium tracking-widest text-sidebar-muted uppercase">
-            Récents
+            {isSearching ? "Résultats" : "Récents"}
           </p>
         </div>
 
@@ -251,58 +329,7 @@ export function Sidebar() {
           {!loading && conversations.length === 0 && (
             <p className="px-3 py-4 text-sm text-sidebar-muted">Aucune conversation</p>
           )}
-          <ul className="space-y-0.5">
-            {conversations.map((conv) => (
-              <li key={conv.id}>
-                {editingId === conv.id ? (
-                  <Input
-                    variant="sidebar"
-                    autoFocus
-                    value={editTitle}
-                    onChange={(e) => setEditTitle(e.target.value)}
-                    onBlur={() => void commitRename(conv.id)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") void commitRename(conv.id);
-                      if (e.key === "Escape") setEditingId(null);
-                    }}
-                    className="mx-1 h-8"
-                  />
-                ) : (
-                  <div
-                    className={cn(
-                      "group relative rounded-lg transition-colors",
-                      activeId === conv.id
-                        ? "bg-sidebar-active"
-                        : "hover:bg-sidebar-accent",
-                      openMenuId === conv.id && "bg-sidebar-accent"
-                    )}
-                  >
-                    <Link
-                      href={`/c/${conv.id}`}
-                      title={conv.title}
-                      className={cn(
-                        "block w-full truncate px-3 py-2 text-sm font-medium transition-[padding]",
-                        "group-hover:pr-9",
-                        openMenuId === conv.id && "pr-9",
-                        activeId === conv.id
-                          ? "text-white"
-                          : "text-sidebar-muted"
-                      )}
-                    >
-                      {conv.title}
-                    </Link>
-                    <ConversationMenu
-                      open={openMenuId === conv.id}
-                      onOpenChange={(open) => setOpenMenuId(open ? conv.id : null)}
-                      onRename={() => startRename(conv.id, conv.title)}
-                      onDuplicate={() => void handleFork(conv.id)}
-                      onDelete={() => openDeleteDialog(conv.id, conv.title)}
-                    />
-                  </div>
-                )}
-              </li>
-            ))}
-          </ul>
+          <ul className="space-y-0.5">{recentConversations.map(renderConversation)}</ul>
         </div>
 
         <div className="space-y-3 border-t border-sidebar-border p-3">

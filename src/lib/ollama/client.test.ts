@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  extractStreamMetrics,
   formatModelNotFoundError,
   isModelAvailable,
   type OllamaModel,
@@ -41,5 +42,25 @@ describe("isModelInstalled", () => {
 
   it("matches base model name", () => {
     expect(isModelInstalled("llama3.2", ["llama3.2:latest"])).toBe(true);
+  });
+});
+
+describe("extractStreamMetrics", () => {
+  it("converts Ollama final chunk into message metrics", () => {
+    expect(
+      extractStreamMetrics({
+        prompt_eval_count: 120,
+        eval_count: 42,
+        eval_duration: 1_500_000_000,
+      })
+    ).toEqual({
+      promptTokens: 120,
+      completionTokens: 42,
+      durationMs: 1500,
+    });
+  });
+
+  it("returns undefined when metrics are missing", () => {
+    expect(extractStreamMetrics({})).toBeUndefined();
   });
 });

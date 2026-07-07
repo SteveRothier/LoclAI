@@ -2,14 +2,16 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Copy, MoreVertical, Pencil, Trash2 } from "lucide-react";
+import { Copy, MoreVertical, Pencil, Pin, PinOff, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type ConversationMenuProps = {
   open: boolean;
+  pinned: boolean;
   onOpenChange: (open: boolean) => void;
   onRename: () => void;
   onDuplicate: () => void;
+  onTogglePin: () => void;
   onDelete: () => void;
 };
 
@@ -41,9 +43,11 @@ function MenuItem({
 
 export function ConversationMenu({
   open,
+  pinned,
   onOpenChange,
   onRename,
   onDuplicate,
+  onTogglePin,
   onDelete,
 }: ConversationMenuProps) {
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -148,6 +152,11 @@ export function ConversationMenu({
               icon={Copy}
               label="Dupliquer"
               onClick={() => closeAnd(onDuplicate)}
+            />
+            <MenuItem
+              icon={pinned ? PinOff : Pin}
+              label={pinned ? "Désépingler" : "Épingler"}
+              onClick={() => closeAnd(onTogglePin)}
             />
             <div className="my-1 border-t border-sidebar-border" />
             <MenuItem

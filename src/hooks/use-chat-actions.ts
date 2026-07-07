@@ -6,37 +6,21 @@ import {
   deleteMessagesAfter,
   getConversation,
   getMessages,
+  getSettings,
   updateConversation,
   updateMessage,
   type Conversation,
-  type Message,
 } from "@/lib/db/schema";
+import { buildOllamaMessages } from "@/lib/chat/context";
 import { generateConversationTitle } from "@/lib/chat/title";
 import {
   fetchChatStream,
   formatModelNotFoundError,
   isModelAvailable,
-  type OllamaMessage,
 } from "@/lib/ollama/client";
 import { useConversationsRefreshStore } from "@/stores/conversations-store";
 import { useChatStore } from "@/stores/chat-store";
 import { useOllamaStore } from "@/stores/ollama-store";
-
-function buildOllamaMessages(
-  conversation: Conversation,
-  messages: Message[]
-): OllamaMessage[] {
-  const result: OllamaMessage[] = [];
-  if (conversation.systemPrompt.trim()) {
-    result.push({ role: "system", content: conversation.systemPrompt });
-  }
-  for (const msg of messages) {
-    if (msg.role === "user" || msg.role === "assistant") {
-      result.push({ role: msg.role, content: msg.content });
-    }
-  }
-  return result;
-}
 
 async function maybeGenerateConversationTitle(
   conversationId: string,
@@ -74,8 +58,15 @@ async function streamAssistantReply(
   conversation: Conversation,
   endpointUrl: string
 ): Promise<string> {
+  const settings = await getSettings();
   const messagesForContext = await getMessages(conversationId);
-  const ollamaMessages = buildOllamaMessages(conversation, messagesForContext);
+  const { messages: ollamaMessages, excludedCount } = buildOllamaMessages(
+    conversation,
+    messagesForContext,
+    settings.maxContextMessages
+  );
+
+  useChatStore.getState().setExcludedContextCount(excludedCount);
 
   const controller = new AbortController();
   useChatStore.getState().setAbortController(controller);
@@ -96,7 +87,12 @@ async function streamAssistantReply(
     assistantContent = result.content;
 
     if (assistantContent.trim()) {
-      await addMessage(conversationId, "assistant", assistantContent);
+      await addMessage(
+        conversationId,
+        "assistant",
+        assistantContent,
+        result.metrics
+      );
     }
 
     return assistantContent;

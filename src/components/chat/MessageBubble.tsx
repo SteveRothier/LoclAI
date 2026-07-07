@@ -5,6 +5,7 @@ import { Check, Copy, Pencil, RotateCcw, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { MarkdownContent } from "@/components/chat/MarkdownContent";
+import { formatMessageMetrics } from "@/lib/chat/metrics";
 import { Loader } from "@/components/ui/loader";
 import { cn } from "@/lib/utils";
 import type { Message } from "@/lib/db/schema";
@@ -142,7 +143,14 @@ export function MessageBubble({
             </div>
           )
         ) : (
-          <MarkdownContent content={message.content} />
+          <>
+            <MarkdownContent content={message.content} />
+            {message.metrics && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                {formatMessageMetrics(message.metrics)}
+              </p>
+            )}
+          </>
         )}
 
         {showActions && !editing && (

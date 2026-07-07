@@ -33,9 +33,16 @@ export type ChatStreamOptions = {
   onToken: (content: string) => void;
 };
 
+export type ChatStreamMetrics = {
+  promptTokens: number;
+  completionTokens: number;
+  durationMs: number;
+};
+
 export type ChatStreamResult = {
   content: string;
   aborted: boolean;
+  metrics?: ChatStreamMetrics;
 };
 
 export type ChatOnceOptions = {
@@ -306,6 +313,30 @@ export async function deleteModel(baseUrl: string, model: string): Promise<void>
   }
 }
 
+export function extractStreamMetrics(chunk: {
+  prompt_eval_count?: number;
+  eval_count?: number;
+  eval_duration?: number;
+}): ChatStreamMetrics | undefined {
+  const completionTokens = chunk.eval_count;
+  const promptTokens = chunk.prompt_eval_count;
+  const evalDuration = chunk.eval_duration;
+
+  if (
+    typeof completionTokens !== "number" ||
+    typeof promptTokens !== "number" ||
+    typeof evalDuration !== "number"
+  ) {
+    return undefined;
+  }
+
+  return {
+    promptTokens,
+    completionTokens,
+    durationMs: Math.round(evalDuration / 1_000_000),
+  };
+}
+
 export async function fetchChatStream({
   baseUrl,
   model,
@@ -338,6 +369,7 @@ export async function fetchChatStream({
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
+  let metrics: ChatStreamMetrics | undefined;
 
   try {
     while (true) {
@@ -356,11 +388,17 @@ export async function fetchChatStream({
           const chunk = JSON.parse(trimmed) as {
             message?: { content?: string };
             done?: boolean;
+            prompt_eval_count?: number;
+            eval_count?: number;
+            eval_duration?: number;
           };
           const token = chunk.message?.content ?? "";
           if (token) {
             content += token;
             onToken(content);
+          }
+          if (chunk.done) {
+            metrics = extractStreamMetrics(chunk) ?? metrics;
           }
         } catch {
           // ignore malformed partial lines
@@ -369,12 +407,12 @@ export async function fetchChatStream({
     }
   } catch (error) {
     if (signal?.aborted) {
-      return { content, aborted: true };
+      return { content, aborted: true, metrics };
     }
     throw error;
   }
 
-  return { content, aborted: false };
+  return { content, aborted: false, metrics };
 }
 
 export async function fetchChatOnce({
