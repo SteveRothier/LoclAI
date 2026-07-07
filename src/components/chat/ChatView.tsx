@@ -1,13 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Settings2 } from "lucide-react";
 import Link from "next/link";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { MessageList } from "@/components/chat/MessageList";
-import { ModelPicker } from "@/components/ollama/ModelPicker";
-import { OllamaStatusBadge } from "@/components/ollama/OllamaStatusBadge";
-import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { useMessages } from "@/lib/db/hooks";
@@ -72,69 +68,6 @@ export function ChatView({ conversationId }: ChatViewProps) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-background">
-      <header
-        className={cn(
-          "flex shrink-0 items-center justify-between gap-3 border-b border-border py-4",
-          CHAT_PADDING_CLASS
-        )}
-      >
-        <div className="min-w-0 flex-1">
-          <h1 className="truncate text-base font-semibold text-foreground">
-            {conversation.title}
-          </h1>
-        </div>
-        <div className="flex items-center gap-3">
-          <OllamaStatusBadge compact />
-          <ModelPicker
-            value={conversation.model}
-            onChange={(model) => void updateConv({ model })}
-            disabled={streaming}
-          />
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => setShowSettings((v) => !v)}
-            title="Paramètres de conversation"
-          >
-            <Settings2 className="size-4 text-muted-foreground" />
-          </Button>
-        </div>
-      </header>
-
-      {showSettings && (
-        <div
-          className={cn(
-            "shrink-0 space-y-4 border-b border-border bg-muted/30 py-5",
-            CHAT_PADDING_CLASS
-          )}
-        >
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
-              Titre
-            </label>
-            <Input
-              value={conversation.title}
-              onChange={(e) => setConversation({ ...conversation, title: e.target.value })}
-              onBlur={() => void updateConv({ title: conversation.title })}
-            />
-          </div>
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
-              System prompt
-            </label>
-            <Textarea
-              value={conversation.systemPrompt}
-              onChange={(e) =>
-                setConversation({ ...conversation, systemPrompt: e.target.value })
-              }
-              onBlur={() => void updateConv({ systemPrompt: conversation.systemPrompt })}
-              rows={3}
-            />
-          </div>
-        </div>
-      )}
-
       {!online && (
         <div
           className={cn(
@@ -166,6 +99,39 @@ export function ChatView({ conversationId }: ChatViewProps) {
         onStop={() => useChatStore.getState().abortStream()}
         streaming={streaming}
         disabled={!online}
+        model={conversation.model}
+        onModelChange={(model) => void updateConv({ model })}
+        showSettings={showSettings}
+        onToggleSettings={() => setShowSettings((v) => !v)}
+        settingsPanel={
+          <>
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
+                Titre
+              </label>
+              <Input
+                value={conversation.title}
+                onChange={(e) =>
+                  setConversation({ ...conversation, title: e.target.value })
+                }
+                onBlur={() => void updateConv({ title: conversation.title })}
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
+                System prompt
+              </label>
+              <Textarea
+                value={conversation.systemPrompt}
+                onChange={(e) =>
+                  setConversation({ ...conversation, systemPrompt: e.target.value })
+                }
+                onBlur={() => void updateConv({ systemPrompt: conversation.systemPrompt })}
+                rows={3}
+              />
+            </div>
+          </>
+        }
       />
     </div>
   );
