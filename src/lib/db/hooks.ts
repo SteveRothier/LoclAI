@@ -3,6 +3,7 @@
 import { useLiveQuery } from "dexie-react-hooks";
 import {
   listConversations,
+  listArchivedConversations,
   searchConversations,
   getMessages,
 } from "@/lib/db/schema";
@@ -15,6 +16,15 @@ export function useConversations(searchQuery = "") {
         : listConversations(),
     [searchQuery]
   );
+
+  return {
+    conversations: conversations ?? [],
+    loading: conversations === undefined,
+  };
+}
+
+export function useArchivedConversations() {
+  const conversations = useLiveQuery(() => listArchivedConversations(), []);
 
   return {
     conversations: conversations ?? [],

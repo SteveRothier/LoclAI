@@ -4,24 +4,25 @@ import { useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  MessageSquarePlus,
   PanelLeft,
   PanelLeftClose,
   Search,
   Settings,
   MessageSquare,
+  Archive,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Input } from "@/components/ui/input";
 import { SectionLoading } from "@/components/ui/loader";
 import { ConversationMenu } from "@/components/sidebar/ConversationMenu";
+import { NewChatMenu } from "@/components/sidebar/NewChatMenu";
 import { useConversations } from "@/lib/db/hooks";
 import {
-  createConversation,
   deleteConversation,
   forkConversation,
   toggleConversationPin,
+  toggleConversationArchive,
   updateConversation,
 } from "@/lib/db/schema";
 import { cn } from "@/lib/utils";
@@ -76,9 +77,13 @@ export function Sidebar() {
     ? pathname.split("/c/")[1]?.split("/")[0]
     : null;
 
-  const handleNewChat = async () => {
-    const conv = await createConversation();
-    router.push(`/c/${conv.id}`);
+  const handleToggleArchive = async (id: string) => {
+    await toggleConversationArchive(id);
+    useConversationsRefreshStore.getState().bump();
+    setOpenMenuId(null);
+    if (activeId === id) {
+      router.push("/");
+    }
   };
 
   const openDeleteDialog = (id: string, title: string) => {
@@ -186,6 +191,7 @@ export function Sidebar() {
             onRename={() => startRename(conv.id, conv.title)}
             onDuplicate={() => void handleFork(conv.id)}
             onTogglePin={() => void handleTogglePin(conv.id)}
+            onToggleArchive={() => void handleToggleArchive(conv.id)}
             onDelete={() => openDeleteDialog(conv.id, conv.title)}
           />
         </div>
@@ -204,12 +210,10 @@ export function Sidebar() {
         </SidebarIconButton>
 
         <div className="mt-2 flex flex-col items-center gap-1">
-          <SidebarIconButton
-            title="Nouvelle conversation"
-            onClick={() => void handleNewChat()}
-          >
-            <MessageSquarePlus className="size-4" />
-          </SidebarIconButton>
+          <NewChatMenu
+            collapsed
+            onNavigate={(id) => router.push(`/c/${id}`)}
+          />
           <SidebarIconButton title="Rechercher" onClick={focusSearch}>
             <Search className="size-4" />
           </SidebarIconButton>
@@ -274,15 +278,7 @@ export function Sidebar() {
         </div>
 
         <div className="space-y-3 px-3">
-          <Button
-            type="button"
-            variant="sidebar"
-            className="w-full justify-start gap-2.5"
-            onClick={() => void handleNewChat()}
-          >
-            <MessageSquarePlus className="size-4" />
-            Nouvelle conversation
-          </Button>
+          <NewChatMenu onNavigate={(id) => router.push(`/c/${id}`)} />
           <div className="relative">
             <Search className="absolute top-1/2 left-3 size-3.5 -translate-y-1/2 text-sidebar-muted" />
             <Input
@@ -333,6 +329,18 @@ export function Sidebar() {
         </div>
 
         <div className="space-y-3 border-t border-sidebar-border p-3">
+          <Link
+            href="/archives"
+            className={cn(
+              "inline-flex h-9 w-full items-center justify-start gap-2.5 rounded-lg px-3 text-sm font-medium transition-colors",
+              pathname === "/archives"
+                ? "bg-sidebar-active text-white"
+                : "text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            )}
+          >
+            <Archive className="size-4" />
+            Archives
+          </Link>
           <Link
             href="/settings"
             className={cn(

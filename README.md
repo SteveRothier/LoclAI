@@ -6,7 +6,8 @@ Le navigateur affiche l'interface et sert de pont vers Ollama (`http://127.0.0.1
 
 - Chat en streaming, multi-conversations, export/import JSON
 - Gestion des modèles : recherche, téléchargement, désactivation, suppression
-- System prompt configurables par conversation
+- Assistants / personas configurables
+- Contexte limité, métriques tokens et estimation du contexte envoyé
 
 ## Démarrage rapide
 
@@ -36,7 +37,10 @@ En local, le navigateur contacte Ollama directement — aucune configuration COR
 
 Dans **Paramètres**, vous pouvez :
 
+- basculer entre **mode clair** et **mode sombre**
 - configurer l'URL Ollama et le modèle par défaut
+- définir la limite de messages dans le contexte
+- gérer les **assistants / personas** réutilisables
 - **rechercher** des modèles sur la bibliothèque Ollama et les **télécharger** (`pull`)
 - **désactiver** un modèle (masqué du chat, mais toujours installé)
 - **supprimer** un modèle de la machine
@@ -68,14 +72,20 @@ ollama serve
 ## Fonctionnalités
 
 - Chat streaming avec annulation
-- Conversations : créer, renommer, dupliquer, supprimer, rechercher
-- Sélecteur de modèle (modèles installés et actifs)
-- Modification et copie des messages
+- Composer intégré : sélecteur de modèle, paramètres de conversation, raccourcis clavier
+- Conversations : créer (avec choix d'assistant), renommer, dupliquer, épingler, archiver, supprimer, rechercher
+- Page **Archives** pour restaurer les conversations masquées
+- Assistants / personas : profils prédéfinis ou personnalisés, choix à la création ou dans le composer
+- Contexte limité configurable (messages les plus anciens exclus automatiquement)
+- Bandeau d'information : messages exclus + estimation tokens du contexte
+- Métriques sous les réponses assistant (tokens prompt/complétion, vitesse tok/s)
+- Modification et copie des messages ; copier / régénérer les réponses assistant
 - Blocs de code avec coloration syntaxique
 - System prompt par conversation
-- Copier / régénérer les réponses assistant
+- Mode clair / sombre avec persistance locale
 - Gestion des modèles Ollama (recherche, pull, désactivation, suppression)
 - Export / import JSON des conversations
+- Loaders personnalisés (streaming, chargement sections)
 
 ## Architecture
 
@@ -99,10 +109,25 @@ npm test         # tests unitaires (Vitest)
 
 Next.js 16 · React 19 · TypeScript · Tailwind 4 · Dexie · Zustand · react-markdown
 
-## Roadmap (v2+)
+## Roadmap
 
+### Fait (v1.1)
+
+- Contexte limité et bandeau d'exclusion
+- Métriques tokens / tok/s sous les réponses
+- Épinglage des conversations
 - Assistants / personas
-- Métriques tokens/s
-- PWA offline complète
-- RAG documents locaux
-- Mode comparaison multi-modèles
+- Composer style Cursor, loaders personnalisés
+
+### v1.2 (en cours)
+
+- Mode sombre global
+- Archivage des conversations
+- Choix d'assistant à la création
+- Estimation tokens du contexte dans le bandeau
+
+### v2
+
+- PWA offline complète (service worker)
+- RAG documents locaux (upload, chunks, embeddings Ollama)
+- Mode comparaison multi-modèles (2 colonnes, 2 streams)

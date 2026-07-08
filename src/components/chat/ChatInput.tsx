@@ -57,7 +57,9 @@ export function ChatInput({
     <div className={cn("shrink-0 bg-background py-4 sm:py-5", CHAT_PADDING_CLASS)}>
       <div className={CHAT_CONTENT_CLASS}>
         {contextNotice && (
-          <p className="mb-2 text-center text-xs text-amber-700">{contextNotice}</p>
+          <p className="mb-2 text-center text-xs text-amber-700 dark:text-amber-400">
+            {contextNotice}
+          </p>
         )}
 
         {showSettings && settingsPanel && (
@@ -138,7 +140,7 @@ export function ChatInput({
 
         <p className="mt-2 text-center text-xs text-muted-foreground">
           Les modèles peuvent faire des erreurs. Envisagez de vérifier les informations
-          importantes. · Entrée pour envoyer · Maj+Entrée pour un saut de ligne
+          importantes.
         </p>
       </div>
     </div>

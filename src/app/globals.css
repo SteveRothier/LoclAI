@@ -1,5 +1,115 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
+@property --background {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #ffffff;
+}
+
+@property --foreground {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #1a1a1a;
+}
+
+@property --card {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #ffffff;
+}
+
+@property --card-foreground {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #1a1a1a;
+}
+
+@property --popover {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #ffffff;
+}
+
+@property --popover-foreground {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #1a1a1a;
+}
+
+@property --primary {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #059669;
+}
+
+@property --primary-foreground {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #ffffff;
+}
+
+@property --accent {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #047857;
+}
+
+@property --accent-foreground {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #ffffff;
+}
+
+@property --destructive {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #ef4444;
+}
+
+@property --secondary {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #f5f5f5;
+}
+
+@property --secondary-foreground {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #1a1a1a;
+}
+
+@property --muted {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #f0f0f0;
+}
+
+@property --muted-foreground {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #6b7280;
+}
+
+@property --border {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #e8e8e8;
+}
+
+@property --input {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #f5f5f5;
+}
+
+@property --ring {
+  syntax: "<color>";
+  inherits: true;
+  initial-value: #059669;
+}
+
 :root {
   --background: #ffffff;
   --foreground: #1a1a1a;
@@ -27,6 +137,49 @@
   --sidebar-accent-foreground: #ffffff;
   --sidebar-active: rgba(5, 150, 105, 0.12);
   --radius: 0.625rem;
+}
+
+:root.dark {
+  --background: #0f0f0f;
+  --foreground: #f5f5f5;
+  --card: #171717;
+  --card-foreground: #f5f5f5;
+  --popover: #171717;
+  --popover-foreground: #f5f5f5;
+  --primary: #10b981;
+  --primary-foreground: #ffffff;
+  --secondary: #262626;
+  --secondary-foreground: #f5f5f5;
+  --muted: #1f1f1f;
+  --muted-foreground: #a3a3a3;
+  --accent: #059669;
+  --accent-foreground: #ffffff;
+  --destructive: #f87171;
+  --border: #2a2a2a;
+  --input: #1a1a1a;
+  --ring: #10b981;
+}
+
+:root.theme-ready {
+  transition:
+    --background 0.3s ease,
+    --foreground 0.3s ease,
+    --card 0.3s ease,
+    --card-foreground 0.3s ease,
+    --popover 0.3s ease,
+    --popover-foreground 0.3s ease,
+    --primary 0.3s ease,
+    --primary-foreground 0.3s ease,
+    --accent 0.3s ease,
+    --accent-foreground 0.3s ease,
+    --destructive 0.3s ease,
+    --secondary 0.3s ease,
+    --secondary-foreground 0.3s ease,
+    --muted 0.3s ease,
+    --muted-foreground 0.3s ease,
+    --border 0.3s ease,
+    --input 0.3s ease,
+    --ring 0.3s ease;
 }
 
 @theme inline {
@@ -69,6 +222,10 @@
   }
   html {
     @apply h-full font-sans;
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
   }
   body {
     @apply h-full bg-background text-foreground antialiased;

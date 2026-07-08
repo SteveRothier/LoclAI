@@ -8,7 +8,7 @@ import { PersonaSelect } from "@/components/chat/PersonaSelect";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { SectionLoading } from "@/components/ui/loader";
-import { trimMessagesForContext } from "@/lib/chat/context";
+import { trimMessagesForContext, estimateContextTokens } from "@/lib/chat/context";
 import { useMessages } from "@/lib/db/hooks";
 import {
   getConversation,
@@ -60,6 +60,11 @@ export function ChatView({ conversationId }: ChatViewProps) {
   }, [messages, maxContextMessages]);
 
   const contextExcludedCount = Math.max(excludedContextCount, projectedExcludedCount);
+
+  const contextTokenEstimate = useMemo(() => {
+    if (!conversation) return 0;
+    return estimateContextTokens(conversation, messages, maxContextMessages);
+  }, [conversation, messages, maxContextMessages]);
 
   const handleCopy = useCallback(async (content: string) => {
     await navigator.clipboard.writeText(content);
@@ -135,7 +140,7 @@ export function ChatView({ conversationId }: ChatViewProps) {
         onToggleSettings={() => setShowSettings((v) => !v)}
         contextNotice={
           contextExcludedCount > 0
-            ? `${contextExcludedCount} message${contextExcludedCount > 1 ? "s" : ""} plus ancien${contextExcludedCount > 1 ? "s" : ""} exclus du contexte`
+            ? `${contextExcludedCount} message${contextExcludedCount > 1 ? "s" : ""} plus ancien${contextExcludedCount > 1 ? "s" : ""} exclus du contexte · ~${contextTokenEstimate.toLocaleString("fr-FR")} tokens estimés`
             : undefined
         }
         settingsPanel={

@@ -39,6 +39,22 @@ export function estimateTokenCount(text: string): number {
   return Math.ceil(text.length / CHARS_PER_TOKEN_ESTIMATE);
 }
 
+export function estimateContextTokens(
+  conversation: Conversation,
+  messages: Message[],
+  maxContextMessages: number = DEFAULT_MAX_CONTEXT_MESSAGES
+): number {
+  const { messages: ollamaMessages } = buildOllamaMessages(
+    conversation,
+    messages,
+    maxContextMessages
+  );
+  return ollamaMessages.reduce(
+    (total, message) => total + estimateTokenCount(message.content),
+    0
+  );
+}
+
 export function buildOllamaMessages(
   conversation: Conversation,
   messages: Message[],

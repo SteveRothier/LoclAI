@@ -20,6 +20,7 @@ export type Conversation = {
   titleAuto: boolean;
   pinned: boolean;
   pinnedAt?: number;
+  archived: boolean;
   createdAt: number;
   updatedAt: number;
 };
@@ -95,6 +96,11 @@ class LoclAIDB extends Dexie {
       messages: "id, conversationId, createdAt, [conversationId+createdAt]",
       settings: "id",
     });
+    this.version(3).stores({
+      conversations: "id, updatedAt, createdAt, title, pinned, pinnedAt, archived",
+      messages: "id, conversationId, createdAt, [conversationId+createdAt]",
+      settings: "id",
+    });
   }
 }
 
@@ -115,6 +121,7 @@ function normalizeConversation(conversation: Conversation): Conversation {
     ...conversation,
     titleAuto: conversation.titleAuto ?? true,
     pinned: conversation.pinned ?? false,
+    archived: conversation.archived ?? false,
   };
 }
 
@@ -149,6 +156,7 @@ export async function createConversation(
     titleAuto: partial?.titleAuto ?? true,
     pinned: partial?.pinned ?? false,
     pinnedAt: partial?.pinnedAt,
+    archived: partial?.archived ?? false,
     createdAt: now,
     updatedAt: now,
   };
@@ -190,7 +198,17 @@ function sortConversations(conversations: Conversation[]): Conversation[] {
 
 export async function listConversations(): Promise<Conversation[]> {
   const all = await db.conversations.toArray();
-  return sortConversations(all.map(normalizeConversation));
+  return sortConversations(
+    all.map(normalizeConversation).filter((c) => !c.archived)
+  );
+}
+
+export async function listArchivedConversations(): Promise<Conversation[]> {
+  const all = await db.conversations.toArray();
+  return all
+    .map(normalizeConversation)
+    .filter((c) => c.archived)
+    .sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
 export async function searchConversations(query: string): Promise<Conversation[]> {
@@ -263,6 +281,19 @@ export async function toggleConversationPin(id: string): Promise<void> {
   });
 }
 
+export async function toggleConversationArchive(id: string): Promise<void> {
+  const conversation = await db.conversations.get(id);
+  if (!conversation) return;
+
+  const normalized = normalizeConversation(conversation);
+  const archived = !normalized.archived;
+  await updateConversation(id, {
+    archived,
+    pinned: archived ? false : normalized.pinned,
+    pinnedAt: archived ? undefined : normalized.pinnedAt,
+  });
+}
+
 export async function exportAllData(): Promise<ExportPayload> {
   const [conversations, messages, settings] = await Promise.all([
     db.conversations.toArray(),
@@ -311,6 +342,7 @@ export async function forkConversation(id: string): Promise<Conversation> {
     systemPrompt: source.systemPrompt,
     titleAuto: false,
     pinned: false,
+    archived: false,
     createdAt: now,
     updatedAt: now,
   };

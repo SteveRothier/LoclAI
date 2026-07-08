@@ -13,6 +13,7 @@ import { normalizeOllamaEndpointUrl } from "@/lib/ollama/config";
 import { useSettingsStore } from "@/stores/settings-store";
 import { ModelManager } from "@/components/ollama/ModelManager";
 import { PersonasEditor } from "@/components/settings/PersonasEditor";
+import { ThemeSelect } from "@/components/settings/ThemeSelect";
 import { SectionLoading } from "@/components/ui/loader";
 import {
   exportAllData,
@@ -125,6 +126,16 @@ export default function SettingsPage() {
             </p>
           </div>
         </div>
+
+        <section className="space-y-4 rounded-xl border border-border p-6">
+          <div>
+            <h2 className="font-semibold text-foreground">Apparence</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Choisissez le thème clair, sombre, ou suivez les préférences de votre système.
+            </p>
+          </div>
+          <ThemeSelect />
+        </section>
 
         <section className="space-y-5 rounded-xl border border-border p-6">
           <h2 className="font-semibold text-foreground">Connexion Ollama</h2>

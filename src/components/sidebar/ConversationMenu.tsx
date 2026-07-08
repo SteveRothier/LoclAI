@@ -2,17 +2,22 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Copy, MoreVertical, Pencil, Pin, PinOff, Trash2 } from "lucide-react";
+import { Copy, MoreVertical, Pencil, Pin, PinOff, Trash2, Archive, ArchiveRestore } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type ConversationMenuProps = {
   open: boolean;
   pinned: boolean;
+  archived?: boolean;
   onOpenChange: (open: boolean) => void;
   onRename: () => void;
   onDuplicate: () => void;
   onTogglePin: () => void;
+  onToggleArchive: () => void;
   onDelete: () => void;
+  hideRename?: boolean;
+  hideDuplicate?: boolean;
+  hidePin?: boolean;
 };
 
 function MenuItem({
@@ -44,11 +49,16 @@ function MenuItem({
 export function ConversationMenu({
   open,
   pinned,
+  archived = false,
   onOpenChange,
   onRename,
   onDuplicate,
   onTogglePin,
+  onToggleArchive,
   onDelete,
+  hideRename,
+  hideDuplicate,
+  hidePin,
 }: ConversationMenuProps) {
   const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -143,20 +153,31 @@ export function ConversationMenu({
             style={{ top: position.top, left: position.left }}
             className="fixed z-50 min-w-[200px] overflow-hidden rounded-xl bg-[#2a2a2a] shadow-xl"
           >
+            {!hideRename && (
+              <MenuItem
+                icon={Pencil}
+                label="Renommer"
+                onClick={() => closeAnd(onRename)}
+              />
+            )}
+            {!hideDuplicate && (
+              <MenuItem
+                icon={Copy}
+                label="Dupliquer"
+                onClick={() => closeAnd(onDuplicate)}
+              />
+            )}
+            {!hidePin && (
+              <MenuItem
+                icon={pinned ? PinOff : Pin}
+                label={pinned ? "Désépingler" : "Épingler"}
+                onClick={() => closeAnd(onTogglePin)}
+              />
+            )}
             <MenuItem
-              icon={Pencil}
-              label="Renommer"
-              onClick={() => closeAnd(onRename)}
-            />
-            <MenuItem
-              icon={Copy}
-              label="Dupliquer"
-              onClick={() => closeAnd(onDuplicate)}
-            />
-            <MenuItem
-              icon={pinned ? PinOff : Pin}
-              label={pinned ? "Désépingler" : "Épingler"}
-              onClick={() => closeAnd(onTogglePin)}
+              icon={archived ? ArchiveRestore : Archive}
+              label={archived ? "Désarchiver" : "Archiver"}
+              onClick={() => closeAnd(onToggleArchive)}
             />
             <div className="my-1 border-t border-sidebar-border" />
             <MenuItem

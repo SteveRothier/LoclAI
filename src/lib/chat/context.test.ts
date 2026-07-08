@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildOllamaMessages,
   DEFAULT_MAX_CONTEXT_MESSAGES,
+  estimateContextTokens,
   trimMessagesForContext,
 } from "@/lib/chat/context";
 import type { Conversation, Message } from "@/lib/db/schema";
@@ -23,6 +24,7 @@ const conversation: Conversation = {
   systemPrompt: "Tu es un assistant.",
   titleAuto: true,
   pinned: false,
+  archived: false,
   createdAt: 0,
   updatedAt: 0,
 };
@@ -99,5 +101,30 @@ describe("buildOllamaMessages", () => {
     expect(excludedCount).toBe(2);
     expect(built).toHaveLength(5);
     expect(built[0]?.role).toBe("system");
+  });
+});
+
+describe("estimateContextTokens", () => {
+  it("sums tokens from system prompt and included messages", () => {
+    const messages = [
+      msg("user", "hello", 1),
+      msg("assistant", "hi there", 2),
+    ];
+    const tokens = estimateContextTokens(conversation, messages, 40);
+    expect(tokens).toBeGreaterThan(0);
+    expect(tokens).toBe(
+      Math.ceil("Tu es un assistant.".length / 4) +
+        Math.ceil("hello".length / 4) +
+        Math.ceil("hi there".length / 4)
+    );
+  });
+
+  it("excludes trimmed messages from the estimate", () => {
+    const messages = Array.from({ length: 6 }, (_, i) =>
+      msg(i % 2 === 0 ? "user" : "assistant", "abcd", i)
+    );
+    const full = estimateContextTokens(conversation, messages, 6);
+    const trimmed = estimateContextTokens(conversation, messages, 2);
+    expect(trimmed).toBeLessThan(full);
   });
 });
