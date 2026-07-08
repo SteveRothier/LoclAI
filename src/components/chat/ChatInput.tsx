@@ -62,18 +62,19 @@ export function ChatInput({
           </p>
         )}
 
-        {showSettings && settingsPanel && (
-          <div className="mb-3 space-y-4 rounded-xl border border-border bg-muted/30 p-4">
-            {settingsPanel}
-          </div>
-        )}
-
-        <div
-          className={cn(
-            "overflow-visible rounded-2xl border border-border bg-input shadow-sm transition-colors",
-            "focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/15"
+        <div className="relative">
+          {showSettings && settingsPanel && (
+            <div className="absolute bottom-full left-0 right-0 z-50 mb-2 space-y-4 rounded-xl border border-border bg-background p-4 shadow-xl">
+              {settingsPanel}
+            </div>
           )}
-        >
+
+          <div
+            className={cn(
+              "overflow-visible rounded-2xl border border-border bg-input shadow-sm transition-colors",
+              "focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/15"
+            )}
+          >
           <textarea
             ref={ref}
             value={value}
@@ -135,6 +136,7 @@ export function ChatInput({
                 <Send className="size-3.5" />
               </Button>
             )}
+          </div>
           </div>
         </div>
 
