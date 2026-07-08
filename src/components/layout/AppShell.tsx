@@ -1,20 +1,20 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useLayoutEffect } from "react";
 import { Sidebar } from "@/components/sidebar/Sidebar";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useOllamaStore } from "@/stores/ollama-store";
 import { initUIStore, useUIStore } from "@/stores/ui-store";
 import { cn } from "@/lib/utils";
 
-const SIDEBAR_WIDTH_OPEN = "w-[260px]";
-const SIDEBAR_WIDTH_COLLAPSED = "w-[52px]";
-
 export function AppShell({ children }: { children: React.ReactNode }) {
   const sidebarOpen = useUIStore((s) => s.sidebarOpen);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     initUIStore();
+  }, []);
+
+  useEffect(() => {
     void useSettingsStore.getState().load();
     void useOllamaStore.getState().init();
     useOllamaStore.getState().startPolling();
@@ -25,9 +25,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="flex h-dvh overflow-hidden">
       <div
         className={cn(
-          "shrink-0 transition-[width] duration-200 ease-in-out",
-          sidebarOpen ? SIDEBAR_WIDTH_OPEN : SIDEBAR_WIDTH_COLLAPSED
+          "sidebar-shell shrink-0",
+          sidebarOpen ? "w-[260px]" : "w-[52px]"
         )}
+        suppressHydrationWarning
       >
         <Sidebar />
       </div>

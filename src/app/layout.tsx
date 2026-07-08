@@ -36,7 +36,7 @@ export default function RootLayout({
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){var d=document.documentElement;try{var t=localStorage.getItem("loclai-theme");var dark=false;if(t==="dark")dark=true;else if(t!=="light")dark=window.matchMedia("(prefers-color-scheme: dark)").matches;if(dark)d.classList.add("dark");}catch(e){}requestAnimationFrame(function(){requestAnimationFrame(function(){d.classList.add("theme-ready");});});})();`,
+            __html: `(function(){var d=document.documentElement;try{var t=localStorage.getItem("loclai-theme");var dark=false;if(t==="dark")dark=true;else if(t!=="light")dark=window.matchMedia("(prefers-color-scheme: dark)").matches;if(dark)d.classList.add("dark");var s=localStorage.getItem("loclai-sidebar-open");d.setAttribute("data-sidebar",s==="0"?"collapsed":"open");}catch(e){d.setAttribute("data-sidebar","open");}requestAnimationFrame(function(){requestAnimationFrame(function(){d.classList.add("theme-ready");});});})();`,
           }}
         />
       </head>

@@ -182,6 +182,21 @@
     --ring 0.3s ease;
 }
 
+html[data-sidebar="collapsed"] .sidebar-shell {
+  width: 52px;
+  max-width: 52px;
+}
+
+html[data-sidebar="open"] .sidebar-shell {
+  width: 260px;
+  max-width: 260px;
+}
+
+.sidebar-shell {
+  overflow: hidden;
+  transition: width 0.3s ease-in-out, max-width 0.3s ease-in-out;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
