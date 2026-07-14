@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { SectionLoading } from "@/components/ui/loader";
 import { ConversationMenu } from "@/components/sidebar/ConversationMenu";
 import { NewChatMenu } from "@/components/sidebar/NewChatMenu";
+import { ArchivesFlyout } from "@/components/sidebar/ArchivesFlyout";
 import { SidebarFlyout } from "@/components/sidebar/SidebarFlyout";
 import { useConversations } from "@/lib/db/hooks";
 import {
@@ -79,10 +80,16 @@ export function Sidebar() {
   const [flyoutSearchFocus, setFlyoutSearchFocus] = useState(false);
   const historyTriggerRef = useRef<HTMLButtonElement>(null);
   const searchTriggerRef = useRef<HTMLButtonElement>(null);
+  const archivesTriggerRef = useRef<HTMLButtonElement>(null);
+  const archivesCollapsedTriggerRef = useRef<HTMLButtonElement>(null);
   const sidebarRef = useRef<HTMLElement>(null);
   const { conversations, loading } = useConversations(search);
   const sidebarOpen = useUIStore((s) => s.sidebarOpen);
   const setSidebarOpen = useUIStore((s) => s.setSidebarOpen);
+  const settingsOpen = useUIStore((s) => s.settingsOpen);
+  const openSettings = useUIStore((s) => s.openSettings);
+  const archivesFlyoutOpen = useUIStore((s) => s.archivesFlyoutOpen);
+  const setArchivesFlyoutOpen = useUIStore((s) => s.setArchivesFlyoutOpen);
 
   const activeId = pathname.startsWith("/c/")
     ? pathname.split("/c/")[1]?.split("/")[0]
@@ -97,6 +104,7 @@ export function Sidebar() {
     : conversations.filter((conv) => !conv.pinned);
 
   const flyoutAnchorRef = flyoutSearchFocus ? searchTriggerRef : historyTriggerRef;
+  const archivesAnchorRef = sidebarOpen ? archivesTriggerRef : archivesCollapsedTriggerRef;
 
   const handleToggleArchive = async (id: string) => {
     await toggleConversationArchive(id);
@@ -156,6 +164,7 @@ export function Sidebar() {
   };
 
   const openSearchFlyout = () => {
+    setArchivesFlyoutOpen(false);
     setFlyoutSearchFocus(true);
     setFlyoutOpen(true);
   };
@@ -165,8 +174,24 @@ export function Sidebar() {
       closeFlyout();
       return;
     }
+    setArchivesFlyoutOpen(false);
     setFlyoutSearchFocus(false);
     setFlyoutOpen(true);
+  };
+
+  const toggleArchivesFlyout = () => {
+    if (archivesFlyoutOpen) {
+      setArchivesFlyoutOpen(false);
+      return;
+    }
+    closeFlyout();
+    setArchivesFlyoutOpen(true);
+  };
+
+  const handleOpenSettings = () => {
+    closeFlyout();
+    setArchivesFlyoutOpen(false);
+    openSettings();
   };
 
   const closeFlyout = () => {
@@ -336,30 +361,33 @@ export function Sidebar() {
           </div>
 
           <div className="shrink-0 space-y-3 border-t border-sidebar-border p-3">
-            <Link
-              href="/archives"
+            <button
+              ref={archivesTriggerRef}
+              type="button"
+              onClick={toggleArchivesFlyout}
               className={cn(
                 "inline-flex h-9 w-full items-center justify-start gap-2.5 rounded-lg px-3 text-sm font-medium transition-colors",
-                pathname === "/archives"
+                archivesFlyoutOpen
                   ? "bg-sidebar-active text-white"
                   : "text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
               )}
             >
               <Archive className="size-4" />
               Archives
-            </Link>
-            <Link
-              href="/settings"
+            </button>
+            <button
+              type="button"
+              onClick={handleOpenSettings}
               className={cn(
                 "inline-flex h-9 w-full items-center justify-start gap-2.5 rounded-lg px-3 text-sm font-medium transition-colors",
-                pathname === "/settings"
+                settingsOpen
                   ? "bg-sidebar-active text-white"
                   : "text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
               )}
             >
               <Settings className="size-4" />
               Paramètres
-            </Link>
+            </button>
             <div className="flex items-center gap-3 rounded-lg px-3 py-2">
               <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
                 L
@@ -414,18 +442,21 @@ export function Sidebar() {
           </div>
 
           <div className="mt-2 flex flex-col items-center gap-2 border-t border-sidebar-border pt-3">
-            <Link
-              href="/settings"
+            <SidebarIconButton
+              title="Archives"
+              buttonRef={archivesCollapsedTriggerRef}
+              active={archivesFlyoutOpen}
+              onClick={toggleArchivesFlyout}
+            >
+              <Archive className="size-4" />
+            </SidebarIconButton>
+            <SidebarIconButton
               title="Paramètres"
-              className={cn(
-                "flex size-9 items-center justify-center rounded-lg transition-colors",
-                pathname === "/settings"
-                  ? "bg-sidebar-active text-primary"
-                  : "text-sidebar-muted hover:bg-sidebar-accent hover:text-white"
-              )}
+              active={settingsOpen}
+              onClick={handleOpenSettings}
             >
               <Settings className="size-4" />
-            </Link>
+            </SidebarIconButton>
             <div
               title="Local — IA hors ligne"
               className="flex size-8 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground"
@@ -438,6 +469,13 @@ export function Sidebar() {
 
       {!sidebarOpen && <SidebarFlyout {...flyoutProps} />}
 
+      <ArchivesFlyout
+        open={archivesFlyoutOpen}
+        onOpenChange={setArchivesFlyoutOpen}
+        anchorRef={archivesAnchorRef}
+        sidebarRef={sidebarRef}
+        activeId={activeId}
+      />
       <ConfirmDialog
         open={!!deleteTarget}
         onOpenChange={(open) => {

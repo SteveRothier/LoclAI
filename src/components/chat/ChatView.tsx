@@ -21,6 +21,7 @@ import { useChatActions } from "@/hooks/use-chat-actions";
 import { useChatStore } from "@/stores/chat-store";
 import { useOllamaStore } from "@/stores/ollama-store";
 import { useConversationsRefreshStore } from "@/stores/conversations-store";
+import { useUIStore } from "@/stores/ui-store";
 import { CHAT_PADDING_CLASS } from "@/lib/chat-layout";
 import { cn } from "@/lib/utils";
 
@@ -40,6 +41,7 @@ export function ChatView({ conversationId }: ChatViewProps) {
   const excludedContextCount = useChatStore((s) => s.excludedContextCount);
   const inputDraft = useChatStore((s) => s.inputDraft);
   const online = useOllamaStore((s) => s.online);
+  const openSettings = useUIStore((s) => s.openSettings);
 
   const { sendMessage, regenerateFrom, editUserMessage } = useChatActions(conversationId);
 
@@ -111,9 +113,13 @@ export function ChatView({ conversationId }: ChatViewProps) {
           )}
         >
           Ollama est hors ligne.{" "}
-          <Link href="/settings" className="font-medium text-primary hover:underline">
+          <button
+            type="button"
+            onClick={() => openSettings("ollama")}
+            className="font-medium text-primary hover:underline"
+          >
             Vérifier la configuration
-          </Link>
+          </button>
         </div>
       )}
 

@@ -5,18 +5,22 @@ import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 import { Eye, EyeOff, RefreshCw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Loader } from "@/components/ui/loader";
 import { ModelLibrarySearch } from "@/components/ollama/ModelLibrarySearch";
+import { SettingsAlert } from "@/components/settings/SettingsAlert";
 import { formatModelSize } from "@/lib/ollama/client";
 import { getEnabledModelNames, isModelDisabled } from "@/lib/ollama/models";
 import { countConversationsUsingModel } from "@/lib/db/schema";
 import { cn } from "@/lib/utils";
 import { useOllamaStore } from "@/stores/ollama-store";
 import { useSettingsStore } from "@/stores/settings-store";
+import { useUIStore } from "@/stores/ui-store";
 
 type ModelManagerProps = {
   onStatus?: (message: string | null) => void;
+  embedded?: boolean;
 };
 
 type DeleteTarget = {
@@ -25,7 +29,7 @@ type DeleteTarget = {
   isDefault: boolean;
 };
 
-export function ModelManager({ onStatus }: ModelManagerProps) {
+export function ModelManager({ onStatus, embedded }: ModelManagerProps) {
   const [newModel, setNewModel] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
   const online = useOllamaStore((s) => s.online);
@@ -40,6 +44,7 @@ export function ModelManager({ onStatus }: ModelManagerProps) {
   const refresh = useOllamaStore((s) => s.refresh);
   const settings = useSettingsStore((s) => s.settings);
   const updateSettings = useSettingsStore((s) => s.update);
+  const openSettings = useUIStore((s) => s.openSettings);
 
   const disabledModels = settings?.disabledModels ?? [];
 
@@ -152,14 +157,20 @@ export function ModelManager({ onStatus }: ModelManagerProps) {
       )}
     >
       <div className="min-w-0">
-        <p
-          className={cn(
-            "truncate font-medium",
-            isHidden ? "text-muted-foreground" : "text-foreground"
+        <div className="flex flex-wrap items-center gap-2">
+          <p
+            className={cn(
+              "truncate font-medium",
+              isHidden ? "text-muted-foreground" : "text-foreground"
+            )}
+          >
+            {model.name}
+          </p>
+          {settings?.defaultModel === model.name && (
+            <Badge variant="success">Par défaut</Badge>
           )}
-        >
-          {model.name}
-        </p>
+          {isHidden && <Badge variant="outline">Désactivé</Badge>}
+        </div>
         <p className="text-xs text-muted-foreground">
           {formatModelSize(model.size)}
           {model.modified_at &&
@@ -167,8 +178,6 @@ export function ModelManager({ onStatus }: ModelManagerProps) {
               addSuffix: true,
               locale: fr,
             })}`}
-          {settings?.defaultModel === model.name && " · par défaut"}
-          {isHidden && " · désactivé"}
         </p>
       </div>
       <div className="flex shrink-0 items-center gap-1">
@@ -198,54 +207,70 @@ export function ModelManager({ onStatus }: ModelManagerProps) {
     </li>
   );
 
-  return (
+  const content = (
     <>
-      <section className="space-y-5 rounded-xl border border-border p-6">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <h2 className="font-semibold text-foreground">Modèles installés</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Recherchez dans la bibliothèque Ollama, téléchargez, désactivez ou supprimez des modèles.{" "}
-              <a
-                href="https://ollama.com/library"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary hover:underline"
-              >
-                Bibliothèque Ollama
-              </a>
-            </p>
+        <div
+          className={cn(
+            embedded && "sticky top-0 z-10 -mx-1 bg-card/95 pb-3 backdrop-blur-sm"
+          )}
+        >
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              {!embedded && (
+                <h2 className="font-semibold text-foreground">Modèles installés</h2>
+              )}
+              <p className={cn("text-sm text-muted-foreground", !embedded && "mt-1")}>
+                Recherchez dans la bibliothèque Ollama, téléchargez, désactivez ou supprimez des modèles.{" "}
+                <a
+                  href="https://ollama.com/library"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  Bibliothèque Ollama
+                </a>
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon-sm"
+              onClick={() => void refresh()}
+              disabled={!online || pulling || refreshing}
+              title="Rafraîchir la liste"
+            >
+              {refreshing ? (
+                <Loader variant="ring" size="sm" />
+              ) : (
+                <RefreshCw className="size-4" />
+              )}
+            </Button>
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            size="icon-sm"
-            onClick={() => void refresh()}
-            disabled={!online || pulling || refreshing}
-            title="Rafraîchir la liste"
-          >
-            {refreshing ? (
-              <Loader variant="ring" size="sm" />
-            ) : (
-              <RefreshCw className="size-4" />
-            )}
-          </Button>
+
+          {!online && (
+            <SettingsAlert variant="warning" className="mt-3">
+              Ollama est hors ligne — impossible de gérer les modèles.{" "}
+              <button
+                type="button"
+                onClick={() => openSettings("ollama")}
+                className="font-medium text-primary hover:underline"
+              >
+                Vérifier la connexion
+              </button>
+            </SettingsAlert>
+          )}
+
+          <div className="mt-3">
+            <ModelLibrarySearch
+              value={newModel}
+              onChange={setNewModel}
+              onDownload={() => void handlePull()}
+              installedNames={models.map((m) => m.name)}
+              disabled={disabled}
+              downloading={pulling}
+            />
+          </div>
         </div>
-
-        {!online && (
-          <p className="text-sm text-amber-600">
-            Ollama est hors ligne — impossible de gérer les modèles.
-          </p>
-        )}
-
-        <ModelLibrarySearch
-          value={newModel}
-          onChange={setNewModel}
-          onDownload={() => void handlePull()}
-          installedNames={models.map((m) => m.name)}
-          disabled={disabled}
-          downloading={pulling}
-        />
 
         {pulling && pullProgress && (
           <div className="space-y-2 rounded-lg bg-muted/50 p-4">
@@ -269,11 +294,26 @@ export function ModelManager({ onStatus }: ModelManagerProps) {
         )}
 
         {models.length === 0 ? (
-          <p className="text-sm text-muted-foreground">
-            Aucun modèle installé — téléchargez-en un ci-dessus.
-          </p>
+          <div className="rounded-xl border border-dashed border-border px-6 py-8 text-center">
+            <p className="text-sm text-muted-foreground">
+              {online
+                ? "Aucun modèle installé — téléchargez-en un ci-dessus."
+                : "Connectez Ollama pour voir vos modèles installés."}
+            </p>
+            {!online && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-3"
+                onClick={() => openSettings("ollama")}
+              >
+                Ouvrir les paramètres Ollama
+              </Button>
+            )}
+          </div>
         ) : (
-          <div className="space-y-4">
+          <div className={cn("space-y-4", embedded && "max-h-[280px] overflow-y-auto scrollbar-thin pr-1")}>
             {activeModels.length > 0 && (
               <ul className="divide-y divide-border rounded-lg border border-border">
                 {activeModels.map((model) => renderModelRow(model, false))}
@@ -298,7 +338,18 @@ export function ModelManager({ onStatus }: ModelManagerProps) {
             )}
           </div>
         )}
-      </section>
+    </>
+  );
+
+  return (
+    <>
+      {embedded ? (
+        <div className="space-y-5">{content}</div>
+      ) : (
+        <section className="space-y-5 rounded-xl border border-border p-6">
+          {content}
+        </section>
+      )}
 
       <ConfirmDialog
         open={!!deleteTarget}

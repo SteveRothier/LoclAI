@@ -2,6 +2,9 @@
 
 import { useEffect, useLayoutEffect } from "react";
 import { Sidebar } from "@/components/sidebar/Sidebar";
+import { SettingsDialog } from "@/components/settings/SettingsDialog";
+import { ToastContainer } from "@/components/ui/toast";
+import { useSettingsShortcut } from "@/hooks/use-settings-shortcut";
 import { useSettingsStore } from "@/stores/settings-store";
 import { useOllamaStore } from "@/stores/ollama-store";
 import { initUIStore, useUIStore } from "@/stores/ui-store";
@@ -13,6 +16,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   useLayoutEffect(() => {
     initUIStore();
   }, []);
+
+  useSettingsShortcut();
 
   useEffect(() => {
     void useSettingsStore.getState().load();
@@ -33,6 +38,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <Sidebar />
       </div>
       <main className="flex min-w-0 flex-1 flex-col bg-background">{children}</main>
+      <SettingsDialog />
+      <ToastContainer />
     </div>
   );
 }

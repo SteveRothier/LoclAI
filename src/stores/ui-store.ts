@@ -3,10 +3,42 @@ import { create } from "zustand";
 const STORAGE_KEY = "loclai-sidebar-open";
 export const SIDEBAR_TRANSITION_MS = 300;
 
+export type SettingsSection =
+  | "general"
+  | "ollama"
+  | "assistants"
+  | "models"
+  | "data"
+  | "advanced";
+
+export const SETTINGS_SECTIONS: {
+  id: SettingsSection;
+  label: string;
+}[] = [
+  { id: "general", label: "Général" },
+  { id: "ollama", label: "Ollama" },
+  { id: "assistants", label: "Assistants" },
+  { id: "models", label: "Modèles" },
+  { id: "data", label: "Données" },
+  { id: "advanced", label: "Avancé" },
+];
+
+export function isSettingsSection(value: string | null): value is SettingsSection {
+  return SETTINGS_SECTIONS.some((section) => section.id === value);
+}
+
 type UIState = {
   sidebarOpen: boolean;
   setSidebarOpen: (open: boolean) => void;
   toggleSidebar: () => void;
+  settingsOpen: boolean;
+  settingsSection: SettingsSection;
+  openSettings: (section?: SettingsSection) => void;
+  closeSettings: () => void;
+  setSettingsSection: (section: SettingsSection) => void;
+  archivesFlyoutOpen: boolean;
+  setArchivesFlyoutOpen: (open: boolean) => void;
+  toggleArchivesFlyout: () => void;
 };
 
 export function readStoredSidebarOpen(): boolean {
@@ -44,7 +76,6 @@ function getInitialSidebarOpen(): boolean {
 }
 
 export const useUIStore = create<UIState>((set, get) => ({
-  // Valeur fixe pour l'hydratation SSR ; initUIStore() synchronise avant le paint.
   sidebarOpen: false,
   setSidebarOpen: (open) => {
     saveSidebarOpen(open);
@@ -54,6 +85,25 @@ export const useUIStore = create<UIState>((set, get) => ({
     const next = !get().sidebarOpen;
     saveSidebarOpen(next);
     set({ sidebarOpen: next });
+  },
+  settingsOpen: false,
+  settingsSection: "general",
+  openSettings: (section = "general") => {
+    set({ settingsOpen: true, settingsSection: section, archivesFlyoutOpen: false });
+  },
+  closeSettings: () => {
+    set({ settingsOpen: false });
+  },
+  setSettingsSection: (section) => {
+    set({ settingsSection: section });
+  },
+  archivesFlyoutOpen: false,
+  setArchivesFlyoutOpen: (open) => {
+    set({ archivesFlyoutOpen: open });
+  },
+  toggleArchivesFlyout: () => {
+    const next = !get().archivesFlyoutOpen;
+    set({ archivesFlyoutOpen: next, settingsOpen: false });
   },
 }));
 
