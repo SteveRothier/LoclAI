@@ -83,11 +83,10 @@ export function SettingsDialog() {
         aria-controls="settings-tabpanel"
         onClick={() => setSettingsSection(id)}
         className={cn(
-          "inline-flex shrink-0 items-center gap-2 rounded-full border-l-0 px-3 py-2 text-left text-sm font-medium transition-colors",
-          "md:w-full md:rounded-lg md:border-l-2 md:px-3",
+          "inline-flex w-full shrink-0 items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm font-medium transition-colors",
           active
-            ? "bg-primary/10 text-foreground md:border-primary"
-            : "bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground md:border-transparent"
+            ? "bg-secondary text-foreground"
+            : "text-muted-foreground hover:bg-muted hover:text-foreground"
         )}
       >
         <Icon className={cn("size-4 shrink-0", active && "text-primary")} />
@@ -143,7 +142,7 @@ export function SettingsDialog() {
         <div
           role="tablist"
           aria-orientation="vertical"
-          className="flex gap-1 overflow-x-auto p-2 md:flex-col md:overflow-visible md:px-2 md:pb-2"
+          className="flex gap-1 overflow-x-auto p-2 scrollbar-none md:flex-col md:overflow-visible md:px-2 md:pb-2"
         >
           {NAV_GROUPS.map((group, groupIndex) => (
             <div
@@ -170,14 +169,9 @@ export function SettingsDialog() {
           id="settings-tabpanel"
           role="tabpanel"
           aria-labelledby={`settings-tab-${settingsSection}`}
-          className="min-h-0 flex-1 overflow-y-auto p-6 scrollbar-thin"
+          className="min-h-0 flex-1 overflow-y-auto p-6 scrollbar-none"
         >
           <SettingsContent section={settingsSection} />
-        </div>
-        <div className="hidden shrink-0 border-t border-border px-6 py-3 md:block">
-          <p className="text-center text-xs text-muted-foreground">
-            LoclAI — configuration locale, rien n&apos;est envoyé au cloud
-          </p>
         </div>
       </div>
     </Modal>

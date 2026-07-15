@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, RefreshCw } from "lucide-react";
+import { Check, ChevronDown, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Loader } from "@/components/ui/loader";
 import { getEnabledModelNames } from "@/lib/ollama/models";
@@ -113,7 +113,7 @@ function ComposerModelPicker({
           role="listbox"
           className="absolute bottom-full left-0 z-50 mb-1 w-max min-w-full max-w-[11rem] overflow-hidden rounded-lg border border-border bg-popover p-1 shadow-md"
         >
-          <div className="max-h-48 overflow-y-auto scrollbar-thin">
+          <div className="max-h-48 overflow-y-auto scrollbar-none">
             {enabledNames.map((name) => (
               <button
                 key={name}
@@ -142,41 +142,93 @@ function ComposerModelPicker({
 }
 
 function DefaultModelPicker({
-  value,
   disabled,
   onChange,
   state,
 }: {
-  value: string;
   disabled?: boolean;
   onChange: (model: string) => void;
   state: ModelPickerState;
 }) {
-  const { online, enabledNames, selectValue } = state;
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const { online, enabledNames, selectValue, displayLabel } = state;
+
+  useEffect(() => {
+    if (!open) return;
+
+    const onPointerDown = (event: MouseEvent) => {
+      if (rootRef.current?.contains(event.target as Node)) return;
+      setOpen(false);
+    };
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
+
+  const isDisabled = disabled || !online || enabledNames.length === 0;
 
   return (
-    <div className="relative">
-      <select
-        value={selectValue}
-        onChange={(e) => onChange(e.target.value)}
-        disabled={disabled || !online || enabledNames.length === 0}
+    <div ref={rootRef} className="relative w-full max-w-xs">
+      <button
+        type="button"
+        disabled={isDisabled}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((prev) => !prev)}
         className={cn(
-          "h-9 appearance-none rounded-lg border border-border bg-background pl-3 pr-8 text-sm outline-none",
-          "focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/15",
+          "flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-border bg-background px-3 text-sm text-foreground outline-none transition-colors",
+          "hover:bg-muted/50 focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/15",
           "disabled:cursor-not-allowed disabled:opacity-50"
         )}
       >
-        {!online && <option value={value}>{value || "Ollama hors ligne"}</option>}
-        {online && enabledNames.length === 0 && (
-          <option value="">{value || "Aucun modèle actif"}</option>
-        )}
-        {enabledNames.map((name) => (
-          <option key={name} value={name}>
-            {name}
-          </option>
-        ))}
-      </select>
-      <ChevronDown className="pointer-events-none absolute top-1/2 right-2 size-4 -translate-y-1/2 text-muted-foreground" />
+        <span className="truncate">{displayLabel}</span>
+        <ChevronDown
+          className={cn(
+            "size-4 shrink-0 text-muted-foreground transition-transform",
+            open && "rotate-180"
+          )}
+        />
+      </button>
+
+      {open && enabledNames.length > 0 && (
+        <div
+          role="listbox"
+          className="absolute z-50 mt-1.5 w-full overflow-hidden rounded-lg border border-border bg-popover shadow-lg"
+        >
+          <div className="max-h-48 overflow-y-auto scrollbar-none">
+            {enabledNames.map((name) => (
+              <button
+                key={name}
+                type="button"
+                role="option"
+                aria-selected={name === selectValue}
+                onClick={() => {
+                  onChange(name);
+                  setOpen(false);
+                }}
+                className={cn(
+                  "flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors hover:bg-muted",
+                  name === selectValue ? "text-foreground" : "text-muted-foreground"
+                )}
+              >
+                <span className="flex-1 truncate">{name}</span>
+                {name === selectValue && (
+                  <Check className="size-4 shrink-0 text-primary" />
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -197,7 +249,6 @@ export function ModelPicker({
 
   return (
     <DefaultModelPicker
-      value={value}
       disabled={disabled}
       onChange={onChange}
       state={state}

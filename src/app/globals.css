@@ -266,6 +266,15 @@ html[data-sidebar="open"] .sidebar-shell {
     scrollbar-color: var(--sidebar-border) transparent;
   }
 
+  .scrollbar-none {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+
   @keyframes loclai-ellipsis {
     0%,
     80%,

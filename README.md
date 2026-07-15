@@ -5,6 +5,8 @@
 Le navigateur affiche l'interface et sert de pont vers Ollama (`http://127.0.0.1:11434`). L'historique est conservé dans **IndexedDB**, directement dans le navigateur.
 
 - Chat en streaming, multi-conversations, export/import JSON
+- Sidebar repliée style ChatGPT avec flyouts (historique, recherche, archives)
+- Paramètres en modal overlay (6 sections)
 - Gestion des modèles : recherche, téléchargement, désactivation, suppression
 - Assistants / personas configurables
 - Contexte limité, métriques tokens et estimation du contexte envoyé
@@ -35,15 +37,33 @@ En local, le navigateur contacte Ollama directement — aucune configuration COR
 
 ## Paramètres
 
-Dans **Paramètres**, vous pouvez :
+Ouvrez la modal **Paramètres** depuis la barre latérale ou avec **`Ctrl+,`** ( **`Cmd+,`** sur Mac).
 
-- basculer entre **mode clair** et **mode sombre**
-- configurer l'URL Ollama et le modèle par défaut
-- définir la limite de messages dans le contexte
-- gérer les **assistants / personas** réutilisables
-- **rechercher** des modèles sur la bibliothèque Ollama et les **télécharger** (`pull`)
-- **désactiver** un modèle (masqué du chat, mais toujours installé)
-- **supprimer** un modèle de la machine
+Six sections :
+
+| Section | Contenu |
+|---------|---------|
+| **Général** | Thème clair / sombre / système |
+| **Ollama** | URL, modèle par défaut, test connexion, contexte |
+| **Assistants** | Personas réutilisables |
+| **Modèles** | Liste installée, téléchargement, désactivation, suppression |
+| **Données** | Export / import JSON |
+| **Avancé** | Déploiement Vercel + Ollama local |
+
+Liens profonds (bookmarks) :
+
+- `/settings` — ouvre la modal Paramètres
+- `/settings?section=ollama` — ouvre directement la section Ollama
+- `/archives` — ouvre le flyout Archives dans la sidebar
+
+## Raccourcis clavier
+
+| Raccourci | Action |
+|-----------|--------|
+| `Entrée` | Envoyer le message |
+| `Shift+Entrée` | Nouvelle ligne dans le composer |
+| `Ctrl+,` / `Cmd+,` | Ouvrir les Paramètres |
+| `Échap` | Fermer modals et flyouts |
 
 ## Déploiement Vercel + Ollama local
 
@@ -60,7 +80,7 @@ ollama serve
 ```
 
 3. Ouvrir l'URL Vercel **depuis le même PC** où Ollama tourne
-4. Vérifier le statut Ollama dans l'en-tête du chat
+4. Vérifier le statut Ollama dans le bandeau du chat ou dans Paramètres → Ollama
 
 ### Variables d'environnement (optionnelles)
 
@@ -72,9 +92,10 @@ ollama serve
 ## Fonctionnalités
 
 - Chat streaming avec annulation
-- Composer intégré : sélecteur de modèle, paramètres de conversation, raccourcis clavier
+- Composer intégré : sélecteur de modèle, paramètres de conversation (panneau flottant)
+- Sidebar repliée/étendue persistante avec flyouts au clic (historique, recherche, archives)
 - Conversations : créer (avec choix d'assistant), renommer, dupliquer, épingler, archiver, supprimer, rechercher
-- Page **Archives** pour restaurer les conversations masquées
+- **Archives** via flyout sidebar (restaurer les conversations masquées)
 - Assistants / personas : profils prédéfinis ou personnalisés, choix à la création ou dans le composer
 - Contexte limité configurable (messages les plus anciens exclus automatiquement)
 - Bandeau d'information : messages exclus + estimation tokens du contexte
@@ -82,10 +103,11 @@ ollama serve
 - Modification et copie des messages ; copier / régénérer les réponses assistant
 - Blocs de code avec coloration syntaxique
 - System prompt par conversation
-- Mode clair / sombre avec persistance locale
+- Mode clair / sombre / système avec persistance locale
+- Paramètres en modal overlay (sans quitter la conversation)
 - Gestion des modèles Ollama (recherche, pull, désactivation, suppression)
 - Export / import JSON des conversations
-- Loaders personnalisés (streaming, chargement sections)
+- Toasts de feedback et loaders personnalisés
 
 ## Architecture
 
@@ -105,6 +127,8 @@ npm run lint     # ESLint
 npm test         # tests unitaires (Vitest)
 ```
 
+Les tests couvrent la logique métier (`lib/chat`, `lib/ollama`) — pas les composants UI.
+
 ## Stack
 
 Next.js 16 · React 19 · TypeScript · Tailwind 4 · Dexie · Zustand · react-markdown
@@ -119,15 +143,22 @@ Next.js 16 · React 19 · TypeScript · Tailwind 4 · Dexie · Zustand · react-
 - Assistants / personas
 - Composer style Cursor, loaders personnalisés
 
-### v1.2 (en cours)
+### Fait (v1.2)
 
-- Mode sombre global
-- Archivage des conversations
-- Choix d'assistant à la création
+- Mode clair / sombre / système avec persistance
+- Archivage des conversations + flyout sidebar
+- Choix d'assistant à la création (`NewChatMenu`)
 - Estimation tokens du contexte dans le bandeau
+- Sidebar repliée style ChatGPT + flyouts historique/recherche
+- Paramètres en modal overlay (6 sections, `Ctrl+,`)
+- Polish UI paramètres (nav groupée, statut Ollama, thème segmented)
 
-### v2
+### v2 — prochaine étape recommandée : PWA
 
-- PWA offline complète (service worker)
-- RAG documents locaux (upload, chunks, embeddings Ollama)
-- Mode comparaison multi-modèles (2 colonnes, 2 streams)
+Ordre de priorité suggéré :
+
+1. **PWA offline** — service worker, cache assets, icônes, installable (manifest minimal déjà présent)
+2. **Comparaison multi-modèles** — 2 colonnes, 2 streams parallèles pour benchmark local
+3. **RAG documents locaux** — upload, chunks, embeddings Ollama, injection contexte
+
+Voir [`docs/ROADMAP-v2.md`](docs/ROADMAP-v2.md) pour le plan détaillé v2.

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
-import { Eye, EyeOff, RefreshCw, Trash2 } from "lucide-react";
+import { Eye, EyeOff, ExternalLink, RefreshCw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -11,6 +11,7 @@ import { Loader } from "@/components/ui/loader";
 import { ModelLibrarySearch } from "@/components/ollama/ModelLibrarySearch";
 import { SettingsAlert } from "@/components/settings/SettingsAlert";
 import { formatModelSize } from "@/lib/ollama/client";
+import { getOllamaLibraryPageUrl } from "@/lib/ollama/library";
 import { getEnabledModelNames, isModelDisabled } from "@/lib/ollama/models";
 import { countConversationsUsingModel } from "@/lib/db/schema";
 import { cn } from "@/lib/utils";
@@ -152,26 +153,45 @@ export function ModelManager({ onStatus, embedded }: ModelManagerProps) {
     <li
       key={model.name}
       className={cn(
-        "flex items-center justify-between gap-3 px-4 py-3",
-        isHidden && "bg-muted/30"
+        "flex items-center justify-between gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-muted/40",
+        isHidden && "opacity-70"
       )}
     >
-      <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-2">
-          <p
+      <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 items-center gap-1.5">
+          <a
+            href={getOllamaLibraryPageUrl(model.name)}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Voir sur ollama.com"
             className={cn(
-              "truncate font-medium",
+              "group/name inline-flex min-w-0 items-center gap-1 transition-colors hover:text-primary hover:underline",
               isHidden ? "text-muted-foreground" : "text-foreground"
             )}
           >
-            {model.name}
-          </p>
+            <span className="truncate text-sm font-medium">{model.name}</span>
+            <ExternalLink className="size-3 shrink-0 opacity-0 transition-opacity group-hover/name:opacity-100" />
+          </a>
           {settings?.defaultModel === model.name && (
-            <Badge variant="success">Par défaut</Badge>
+            <Badge variant="success" className="shrink-0 px-1.5 py-0 text-[10px]">
+              Par défaut
+            </Badge>
           )}
-          {isHidden && <Badge variant="outline">Désactivé</Badge>}
+          {isHidden && (
+            <Badge variant="outline" className="shrink-0 px-1.5 py-0 text-[10px]">
+              Désactivé
+            </Badge>
+          )}
+          <span className="hidden min-w-0 truncate text-xs text-muted-foreground sm:inline">
+            · {formatModelSize(model.size)}
+            {model.modified_at &&
+              ` · ${formatDistanceToNow(new Date(model.modified_at), {
+                addSuffix: true,
+                locale: fr,
+              })}`}
+          </span>
         </div>
-        <p className="text-xs text-muted-foreground">
+        <p className="truncate text-xs text-muted-foreground sm:hidden">
           {formatModelSize(model.size)}
           {model.modified_at &&
             ` · ${formatDistanceToNow(new Date(model.modified_at), {
@@ -180,7 +200,7 @@ export function ModelManager({ onStatus, embedded }: ModelManagerProps) {
             })}`}
         </p>
       </div>
-      <div className="flex shrink-0 items-center gap-1">
+      <div className="flex shrink-0 items-center">
         <Button
           type="button"
           variant="ghost"
@@ -188,9 +208,9 @@ export function ModelManager({ onStatus, embedded }: ModelManagerProps) {
           onClick={() => void toggleModelEnabled(model.name)}
           disabled={disabled}
           title={isHidden ? "Réactiver le modèle" : "Désactiver le modèle"}
-          className="text-muted-foreground hover:text-foreground"
+          className="size-7 text-muted-foreground hover:text-foreground"
         >
-          {isHidden ? <Eye className="size-4" /> : <EyeOff className="size-4" />}
+          {isHidden ? <Eye className="size-3.5" /> : <EyeOff className="size-3.5" />}
         </Button>
         <Button
           type="button"
@@ -199,9 +219,9 @@ export function ModelManager({ onStatus, embedded }: ModelManagerProps) {
           onClick={() => void openDeleteDialog(model.name)}
           disabled={disabled}
           title="Supprimer le modèle"
-          className="text-muted-foreground hover:text-destructive"
+          className="size-7 text-muted-foreground hover:text-destructive"
         >
-          <Trash2 className="size-4" />
+          <Trash2 className="size-3.5" />
         </Button>
       </div>
     </li>
@@ -211,7 +231,7 @@ export function ModelManager({ onStatus, embedded }: ModelManagerProps) {
     <>
         <div
           className={cn(
-            embedded && "sticky top-0 z-10 -mx-1 bg-card/95 pb-3 backdrop-blur-sm"
+            embedded && "sticky top-0 z-20 -mx-1 bg-card/95 pb-3 backdrop-blur-sm"
           )}
         >
           <div className="flex items-center justify-between gap-3">
@@ -313,11 +333,21 @@ export function ModelManager({ onStatus, embedded }: ModelManagerProps) {
             )}
           </div>
         ) : (
-          <div className={cn("space-y-4", embedded && "max-h-[280px] overflow-y-auto scrollbar-thin pr-1")}>
+          <div className="relative z-0 space-y-4">
             {activeModels.length > 0 && (
-              <ul className="divide-y divide-border rounded-lg border border-border">
-                {activeModels.map((model) => renderModelRow(model, false))}
-              </ul>
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-muted-foreground">
+                  {activeModels.length} modèle{activeModels.length > 1 ? "s actifs" : " actif"}
+                </p>
+                <ul
+                  className={cn(
+                    "space-y-0.5 overflow-y-auto rounded-lg border border-border bg-muted/10 p-1 scrollbar-none",
+                    embedded ? "max-h-44" : "max-h-52"
+                  )}
+                >
+                  {activeModels.map((model) => renderModelRow(model, false))}
+                </ul>
+              </div>
             )}
 
             {hiddenModels.length > 0 && (
@@ -325,7 +355,12 @@ export function ModelManager({ onStatus, embedded }: ModelManagerProps) {
                 <p className="text-xs font-medium text-muted-foreground">
                   Modèles désactivés ({hiddenModels.length})
                 </p>
-                <ul className="divide-y divide-border rounded-lg border border-dashed border-border">
+                <ul
+                  className={cn(
+                    "space-y-0.5 overflow-y-auto rounded-lg border border-dashed border-border bg-muted/5 p-1 scrollbar-none",
+                    embedded ? "max-h-28" : "max-h-36"
+                  )}
+                >
                   {hiddenModels.map((model) => renderModelRow(model, true))}
                 </ul>
               </div>

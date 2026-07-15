@@ -100,3 +100,8 @@ export function isModelInstalled(
     (name) => name === base || name.startsWith(`${base}:`)
   );
 }
+
+export function getOllamaLibraryPageUrl(modelName: string): string {
+  const base = modelName.split(":")[0];
+  return `https://ollama.com/library/${base}`;
+}

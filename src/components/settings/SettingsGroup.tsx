@@ -15,7 +15,7 @@ export function SettingsGroup({ title, children, className }: SettingsGroupProps
           {title}
         </p>
       )}
-      <div className="overflow-hidden rounded-xl border border-border bg-muted/20 px-4">
+      <div className="rounded-xl border border-border bg-muted/20 px-4">
         {children}
       </div>
     </div>

@@ -1,6 +1,7 @@
 "use client";
 
-import { Monitor, Moon, Sun } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Check, ChevronDown, Monitor, Moon, Sun } from "lucide-react";
 import {
   useThemeStore,
   type ThemePreference,
@@ -11,53 +12,92 @@ const THEME_OPTIONS: {
   value: ThemePreference;
   label: string;
   icon: typeof Monitor;
-  preview: string;
 }[] = [
-  { value: "system", label: "Système", icon: Monitor, preview: "bg-gradient-to-br from-zinc-200 to-zinc-700" },
-  { value: "light", label: "Clair", icon: Sun, preview: "bg-zinc-100" },
-  { value: "dark", label: "Sombre", icon: Moon, preview: "bg-zinc-800" },
+  { value: "system", label: "Système", icon: Monitor },
+  { value: "light", label: "Clair", icon: Sun },
+  { value: "dark", label: "Sombre", icon: Moon },
 ];
 
 export function ThemeSelect() {
   const theme = useThemeStore((s) => s.theme);
   const setTheme = useThemeStore((s) => s.setTheme);
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const current = THEME_OPTIONS.find((option) => option.value === theme) ?? THEME_OPTIONS[0];
+  const CurrentIcon = current.icon;
+
+  useEffect(() => {
+    if (!open) return;
+
+    const onPointerDown = (event: MouseEvent) => {
+      if (!containerRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [open]);
 
   return (
-    <div
-      role="radiogroup"
-      aria-label="Thème"
-      className="flex w-full gap-1 rounded-lg bg-muted p-1"
-    >
-      {THEME_OPTIONS.map(({ value, label, icon: Icon, preview }) => {
-        const active = theme === value;
-        return (
-          <button
-            key={value}
-            type="button"
-            role="radio"
-            aria-checked={active}
-            onClick={() => setTheme(value)}
-            className={cn(
-              "flex flex-1 flex-col items-center gap-1.5 rounded-md px-2 py-2.5 text-xs font-medium transition-colors",
-              active
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <span
+    <div ref={containerRef} className="relative w-full max-w-xs">
+      <button
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+        className={cn(
+          "flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-border bg-background px-3 text-sm text-foreground outline-none transition-colors",
+          "hover:bg-muted/50 focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-primary/15"
+        )}
+      >
+        <span className="flex items-center gap-2">
+          <CurrentIcon className="size-4 text-muted-foreground" />
+          {current.label}
+        </span>
+        <ChevronDown
+          className={cn(
+            "size-4 text-muted-foreground transition-transform",
+            open && "rotate-180"
+          )}
+        />
+      </button>
+
+      {open && (
+        <div
+          role="listbox"
+          className="absolute z-50 mt-1.5 w-full overflow-hidden rounded-lg border border-border bg-popover shadow-lg"
+        >
+          {THEME_OPTIONS.map(({ value, label, icon: Icon }) => (
+            <button
+              key={value}
+              type="button"
+              role="option"
+              aria-selected={theme === value}
+              onClick={() => {
+                setTheme(value);
+                setOpen(false);
+              }}
               className={cn(
-                "size-5 rounded border border-border/60",
-                preview
+                "flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition-colors hover:bg-muted",
+                theme === value ? "text-foreground" : "text-muted-foreground"
               )}
-              aria-hidden
-            />
-            <span className="flex items-center gap-1">
-              <Icon className="size-3.5 shrink-0" />
-              {label}
-            </span>
-          </button>
-        );
-      })}
+            >
+              <Icon className="size-4 shrink-0 opacity-80" />
+              <span className="flex-1">{label}</span>
+              {theme === value && <Check className="size-4 shrink-0 text-primary" />}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

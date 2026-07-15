@@ -15,7 +15,7 @@ export function SettingsSectionHeader({
   className,
 }: SettingsSectionHeaderProps) {
   return (
-    <div className={cn("mb-6", className)}>
+    <div className={cn("mb-4", className)}>
       <div className="flex flex-wrap items-center gap-2">
         <h2 className="text-lg font-semibold text-foreground">{title}</h2>
         {badge}

@@ -37,7 +37,9 @@ export function ModelLibrarySearch({
   const [loadingTags, setLoadingTags] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
+  const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const allowDropdownRef = useRef(false);
 
   useEffect(() => {
     const query = value.trim();
@@ -56,7 +58,9 @@ export function ModelLibrarySearch({
       void searchOllamaLibrary(query, controller.signal)
         .then((items) => {
           setResults(items);
-          setOpen(true);
+          if (allowDropdownRef.current) {
+            setOpen(true);
+          }
         })
         .catch((error) => {
           if (controller.signal.aborted) return;
@@ -77,6 +81,16 @@ export function ModelLibrarySearch({
   }, [value]);
 
   useEffect(() => {
+    if (value.trim()) return;
+    setResults([]);
+    setTagOptions([]);
+    setSelectedModelId(null);
+    setSearchError(null);
+    setOpen(false);
+    allowDropdownRef.current = false;
+  }, [value]);
+
+  useEffect(() => {
     const onPointerDown = (event: MouseEvent) => {
       if (!containerRef.current?.contains(event.target as Node)) {
         setOpen(false);
@@ -88,6 +102,8 @@ export function ModelLibrarySearch({
   }, []);
 
   const selectModel = async (modelId: string) => {
+    allowDropdownRef.current = false;
+    setSelectedModelId(modelId);
     onChange(modelId);
     setOpen(false);
     setTagOptions([]);
@@ -110,21 +126,33 @@ export function ModelLibrarySearch({
     }
   };
 
-  const showResults = open && value.trim().length >= 2 && !disabled;
+  const showVariants = !!selectedModelId && tagOptions.length > 1;
+
+  const showResults =
+    open &&
+    value.trim().length >= 2 &&
+    !disabled &&
+    !showVariants;
 
   return (
-    <div className="space-y-3">
-      <div ref={containerRef} className="relative flex flex-col gap-2 sm:flex-row">
-        <div className="relative min-w-0 flex-1">
+    <div ref={containerRef} className="relative z-30 space-y-3">
+      <div className="relative flex flex-col gap-2 sm:flex-row">
+        <div className="relative z-30 min-w-0 flex-1">
           <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={value}
             onChange={(e) => {
+              allowDropdownRef.current = true;
+              setSelectedModelId(null);
+              setTagOptions([]);
               onChange(e.target.value);
               setOpen(true);
             }}
             onFocus={() => {
-              if (value.trim().length >= 2) setOpen(true);
+              allowDropdownRef.current = true;
+              if (value.trim().length >= 2 && !showVariants) {
+                setOpen(true);
+              }
             }}
             placeholder="Rechercher un modèle — ex. deepseek, llama3.2, qwen"
             disabled={disabled}
@@ -143,7 +171,7 @@ export function ModelLibrarySearch({
           )}
 
           {showResults && (
-            <div className="absolute top-full right-0 left-0 z-20 mt-1 max-h-72 overflow-y-auto rounded-lg border border-border bg-card shadow-lg">
+            <div className="absolute top-full right-0 left-0 z-50 mt-1 max-h-72 overflow-y-auto rounded-lg border border-border bg-popover shadow-lg scrollbar-none">
               {searchError && (
                 <p className="px-4 py-3 text-sm text-destructive">{searchError}</p>
               )}
@@ -196,7 +224,11 @@ export function ModelLibrarySearch({
 
         <Button
           type="button"
-          onClick={() => void onDownload()}
+          onClick={() => {
+            allowDropdownRef.current = false;
+            setOpen(false);
+            void onDownload();
+          }}
           disabled={disabled || !value.trim() || downloading}
           className="shrink-0"
         >
@@ -205,7 +237,7 @@ export function ModelLibrarySearch({
         </Button>
       </div>
 
-      {tagOptions.length > 1 && (
+      {showVariants && (
         <div className="space-y-2">
           <p className="text-xs font-medium text-muted-foreground">Variantes disponibles</p>
           <div className="flex flex-wrap gap-2">
@@ -213,7 +245,11 @@ export function ModelLibrarySearch({
               <button
                 key={tag}
                 type="button"
-                onClick={() => onChange(tag)}
+                onClick={() => {
+                  allowDropdownRef.current = false;
+                  setOpen(false);
+                  onChange(tag);
+                }}
                 disabled={disabled}
                 className={cn(
                   "rounded-full border px-3 py-1 text-xs transition-colors",

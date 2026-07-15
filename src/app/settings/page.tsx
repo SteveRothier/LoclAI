@@ -16,7 +16,7 @@ function SettingsRedirect() {
     const sectionParam = searchParams.get("section");
     const section = isSettingsSection(sectionParam) ? sectionParam : "general";
     openSettings(section);
-    router.replace("/");
+    router.replace(`/?settings=${section}`);
   }, [openSettings, router, searchParams]);
 
   return null;
