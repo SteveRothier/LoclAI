@@ -108,6 +108,20 @@ ollama serve
 - Gestion des modèles Ollama (recherche, pull, désactivation, suppression)
 - Export / import JSON des conversations
 - Toasts de feedback et loaders personnalisés
+- **PWA** : installable (bureau/mobile), cache du shell UI, page hors ligne
+
+## Application installable (PWA)
+
+En **production** (`npm run build` puis `npm run start`, ou déploiement Vercel) :
+
+| Plateforme | Installation |
+|------------|--------------|
+| Chrome / Edge (desktop, Android) | Icône « Installer » dans la barre d'adresse, ou bannière en bas de l'écran |
+| Safari (iOS) | Partager → **Sur l'écran d'accueil** |
+
+**Hors ligne :** l'interface et l'historique IndexedDB restent accessibles. Le chat nécessite toujours **Ollama** en ligne sur votre machine.
+
+Le service worker est désactivé en `npm run dev` pour éviter les conflits avec Turbopack.
 
 ## Architecture
 
@@ -153,12 +167,17 @@ Next.js 16 · React 19 · TypeScript · Tailwind 4 · Dexie · Zustand · react-
 - Paramètres en modal overlay (6 sections, `Ctrl+,`)
 - Polish UI paramètres (nav groupée, statut Ollama, thème segmented)
 
-### v2 — prochaine étape recommandée : PWA
+### Fait (v2.0)
+
+- PWA installable : icônes, manifest complet, service worker (Serwist)
+- Cache du shell UI + page hors ligne (`/~offline`)
+- Bannière d'installation (Chrome/Edge)
+
+### v2 — suite
 
 Ordre de priorité suggéré :
 
-1. **PWA offline** — service worker, cache assets, icônes, installable (manifest minimal déjà présent)
-2. **Comparaison multi-modèles** — 2 colonnes, 2 streams parallèles pour benchmark local
-3. **RAG documents locaux** — upload, chunks, embeddings Ollama, injection contexte
+1. **Comparaison multi-modèles** — 2 colonnes, 2 streams parallèles pour benchmark local
+2. **RAG documents locaux** — upload, chunks, embeddings Ollama, injection contexte
 
 Voir [`docs/ROADMAP-v2.md`](docs/ROADMAP-v2.md) pour le plan détaillé v2.

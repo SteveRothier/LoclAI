@@ -1,7 +1,8 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Geist_Mono } from "next/font/google";
 import { AppShell } from "@/components/layout/AppShell";
 import { ThemeProvider } from "@/components/layout/ThemeProvider";
+import { SerwistProvider } from "@/components/pwa/SerwistProvider";
 import "./globals.css";
 import "highlight.js/styles/github-dark.min.css";
 
@@ -15,11 +16,35 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const APP_NAME = "LoclAI";
+
 export const metadata: Metadata = {
-  title: "LoclAI",
+  applicationName: APP_NAME,
+  title: {
+    default: APP_NAME,
+    template: `%s — ${APP_NAME}`,
+  },
   description:
     "Alternative à ChatGPT entièrement hors ligne. Conversations et inférence via Ollama sur votre machine.",
   manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: APP_NAME,
+  },
+  icons: {
+    icon: [
+      { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#059669",
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({
@@ -27,6 +52,8 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const swDisabled = process.env.NODE_ENV === "development";
+
   return (
     <html
       lang="fr"
@@ -41,9 +68,11 @@ export default function RootLayout({
         />
       </head>
       <body className="h-full">
-        <ThemeProvider>
-          <AppShell>{children}</AppShell>
-        </ThemeProvider>
+        <SerwistProvider swUrl="/serwist/sw.js" disable={swDisabled}>
+          <ThemeProvider>
+            <AppShell>{children}</AppShell>
+          </ThemeProvider>
+        </SerwistProvider>
       </body>
     </html>
   );

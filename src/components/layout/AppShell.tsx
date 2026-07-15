@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect } from "react";
 import { Sidebar } from "@/components/sidebar/Sidebar";
 import { SettingsDialog } from "@/components/settings/SettingsDialog";
 import { ToastContainer } from "@/components/ui/toast";
+import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 import { OverlayDeepLinks } from "@/hooks/use-overlay-deep-links";
 import { useSettingsShortcut } from "@/hooks/use-settings-shortcut";
 import { useSettingsStore } from "@/stores/settings-store";
@@ -42,6 +43,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <SettingsDialog />
       <ToastContainer />
       <OverlayDeepLinks />
+      <InstallPrompt />
     </div>
   );
 }
