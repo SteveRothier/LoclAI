@@ -33,8 +33,9 @@ export function ChatView({ conversationId }: ChatViewProps) {
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [maxContextMessages, setMaxContextMessages] = useState(40);
-  const [loading, setLoading] = useState(true);
+  const [loadedId, setLoadedId] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const loading = loadedId !== conversationId;
   const { messages } = useMessages(conversationId);
   const streaming = useChatStore((s) => s.streaming);
   const streamingContent = useChatStore((s) => s.streamingContent);
@@ -46,15 +47,21 @@ export function ChatView({ conversationId }: ChatViewProps) {
   const { sendMessage, regenerateFrom, editUserMessage } = useChatActions(conversationId);
 
   useEffect(() => {
-    setLoading(true);
+    let cancelled = false;
+
     void Promise.all([getConversation(conversationId), getSettings()]).then(
       ([conversationResult, settings]) => {
+        if (cancelled) return;
         setConversation(conversationResult ?? null);
         setPersonas(settings.personas);
         setMaxContextMessages(settings.maxContextMessages);
-        setLoading(false);
+        setLoadedId(conversationId);
       }
     );
+
+    return () => {
+      cancelled = true;
+    };
   }, [conversationId]);
 
   const projectedExcludedCount = useMemo(() => {

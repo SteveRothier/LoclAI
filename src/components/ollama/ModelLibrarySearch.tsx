@@ -41,14 +41,11 @@ export function ModelLibrarySearch({
   const containerRef = useRef<HTMLDivElement>(null);
   const allowDropdownRef = useRef(false);
 
+  const query = value.trim();
+  const hasSearchQuery = query.length >= 2;
+
   useEffect(() => {
-    const query = value.trim();
-    if (query.length < 2) {
-      setResults([]);
-      setSearchError(null);
-      setSearching(false);
-      return;
-    }
+    if (!hasSearchQuery) return;
 
     const controller = new AbortController();
     const timer = window.setTimeout(() => {
@@ -78,17 +75,17 @@ export function ModelLibrarySearch({
       controller.abort();
       window.clearTimeout(timer);
     };
-  }, [value]);
+  }, [query, hasSearchQuery]);
 
-  useEffect(() => {
-    if (value.trim()) return;
+  const resetSearchUi = () => {
     setResults([]);
     setTagOptions([]);
     setSelectedModelId(null);
     setSearchError(null);
     setOpen(false);
+    setSearching(false);
     allowDropdownRef.current = false;
-  }, [value]);
+  };
 
   useEffect(() => {
     const onPointerDown = (event: MouseEvent) => {
@@ -126,13 +123,14 @@ export function ModelLibrarySearch({
     }
   };
 
-  const showVariants = !!selectedModelId && tagOptions.length > 1;
+  const showVariants =
+    hasSearchQuery && !!selectedModelId && tagOptions.length > 1;
 
   const showResults =
-    open &&
-    value.trim().length >= 2 &&
-    !disabled &&
-    !showVariants;
+    open && hasSearchQuery && !disabled && !showVariants;
+
+  const visibleResults = hasSearchQuery ? results : [];
+  const showSearching = hasSearchQuery && searching;
 
   return (
     <div ref={containerRef} className="relative z-30 space-y-3">
@@ -142,15 +140,20 @@ export function ModelLibrarySearch({
           <Input
             value={value}
             onChange={(e) => {
-              allowDropdownRef.current = true;
-              setSelectedModelId(null);
-              setTagOptions([]);
-              onChange(e.target.value);
-              setOpen(true);
+              const next = e.target.value;
+              if (!next.trim()) {
+                resetSearchUi();
+              } else {
+                allowDropdownRef.current = true;
+                setSelectedModelId(null);
+                setTagOptions([]);
+                setOpen(true);
+              }
+              onChange(next);
             }}
             onFocus={() => {
               allowDropdownRef.current = true;
-              if (value.trim().length >= 2 && !showVariants) {
+              if (hasSearchQuery && !showVariants) {
                 setOpen(true);
               }
             }}
@@ -166,7 +169,7 @@ export function ModelLibrarySearch({
             }}
           />
 
-          {(searching || loadingTags) && (
+          {(showSearching || loadingTags) && (
             <Loader variant="ring" size="sm" tone="muted" className="absolute top-1/2 right-3 -translate-y-1/2" />
           )}
 
@@ -176,14 +179,14 @@ export function ModelLibrarySearch({
                 <p className="px-4 py-3 text-sm text-destructive">{searchError}</p>
               )}
 
-              {!searchError && results.length === 0 && !searching && (
+              {!searchError && visibleResults.length === 0 && !showSearching && (
                 <p className="px-4 py-3 text-sm text-muted-foreground">
                   Aucun modèle trouvé sur ollama.com
                 </p>
               )}
 
               {!searchError &&
-                results.map((result) => {
+                visibleResults.map((result) => {
                   const installed = isModelInstalled(result.modelId, installedNames);
                   return (
                     <button
