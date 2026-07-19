@@ -1,12 +1,15 @@
 "use client";
 
+import { DiffCodeBlock } from "@/components/chat/DiffCodeBlock";
 import { MarkdownContent } from "@/components/chat/MarkdownContent";
+import { MdBlock } from "@/components/chat/MdBlock";
 import { MermaidBlock } from "@/components/chat/MermaidBlock";
 import { StreamingCodeBlock } from "@/components/chat/StreamingCodeBlock";
 import {
   isMarkdownMistakenForMermaid,
   isMermaidSegment,
 } from "@/lib/chat/mermaid-diagram-kinds";
+import { resolveMdBlockFence } from "@/lib/chat/md-blocks";
 import { parseStreamingSegments } from "@/lib/chat/streaming-markdown";
 
 type AssistantContentProps = {
@@ -17,7 +20,7 @@ type AssistantContentProps = {
 
 /**
  * Shared assistant body for streaming + persisted messages.
- * Mermaid fences (all diagram kinds) use MermaidBlock — not hljs.
+ * Mermaid + custom MD fences use dedicated renderers — not hljs.
  */
 export function AssistantContent({
   content,
@@ -43,8 +46,21 @@ export function AssistantContent({
           if (isMarkdownMistakenForMermaid(seg.language, seg.code)) {
             return <MarkdownContent key={`md-fence-${i}`} content={seg.code} />;
           }
+          const custom = resolveMdBlockFence(seg.language, seg.code);
+          if (custom) {
+            return (
+              <MdBlock
+                key={`mdblock-${i}-${custom.kind}`}
+                language={custom.kind}
+                code={custom.code}
+              />
+            );
+          }
           if (isMermaidSegment(seg.language, seg.code)) {
             return <MermaidBlock key={`mermaid-${i}`} code={seg.code} />;
+          }
+          if (seg.language === "diff") {
+            return <DiffCodeBlock key={`diff-${i}`} code={seg.code} />;
           }
           return (
             <StreamingCodeBlock

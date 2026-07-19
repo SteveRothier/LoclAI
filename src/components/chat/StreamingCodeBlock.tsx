@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import { CodeBlock } from "@/components/chat/CodeBlock";
+import { DiffCodeBlock } from "@/components/chat/DiffCodeBlock";
 import { highlightCode } from "@/lib/chat/highlight-code";
 import { cn } from "@/lib/utils";
 
@@ -21,9 +22,13 @@ export function StreamingCodeBlock({
   code,
 }: StreamingCodeBlockProps) {
   const html = useMemo(
-    () => highlightCode(code, language),
+    () => (language === "diff" ? "" : highlightCode(code, language)),
     [code, language]
   );
+
+  if (language === "diff") {
+    return <DiffCodeBlock code={code} />;
+  }
 
   return (
     <CodeBlock language={language || "text"} code={code}>

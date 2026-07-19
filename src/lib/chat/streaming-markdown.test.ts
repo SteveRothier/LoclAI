@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { parseStreamingSegments } from "@/lib/chat/streaming-markdown";
+import {
+  expandColonDirectives,
+  parseStreamingSegments,
+} from "@/lib/chat/streaming-markdown";
 
 describe("parseStreamingSegments", () => {
   it("keeps plain prose as text", () => {
@@ -55,6 +58,27 @@ describe("parseStreamingSegments", () => {
         code: "flowchart LR\n  A --> B",
         incomplete: false,
       },
+    ]);
+  });
+
+  it("expands ::: directives into code segments", () => {
+    const content = [
+      "Intro",
+      ":::badges",
+      "stable|success",
+      ":::",
+      "Fin",
+    ].join("\n");
+    expect(expandColonDirectives(content)).toContain("```badges");
+    expect(parseStreamingSegments(content)).toEqual([
+      { kind: "text", text: "Intro" },
+      {
+        kind: "code",
+        language: "badges",
+        code: "stable|success",
+        incomplete: false,
+      },
+      { kind: "text", text: "Fin" },
     ]);
   });
 });

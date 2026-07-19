@@ -15,13 +15,41 @@ export function parseFenceLanguage(line: string): string {
 }
 
 /**
+ * Convert VitePress-style `:::lang` … `:::` into ``` fences.
+ * Safer in chat prompts: `:::` does not nest/break like triple backticks.
+ */
+export function expandColonDirectives(content: string): string {
+  if (!content.includes(":::")) return content;
+  const lines = content.split("\n");
+  const out: string[] = [];
+  let inColon = false;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    const open = /^:::\s*([\w-]+)\s*$/.exec(trimmed);
+    if (!inColon && open) {
+      out.push("```" + open[1]);
+      inColon = true;
+      continue;
+    }
+    if (inColon && /^:::\s*$/.test(trimmed)) {
+      out.push("```");
+      inColon = false;
+      continue;
+    }
+    out.push(line);
+  }
+  return out.join("\n");
+}
+
+/**
  * Parse streaming markdown into text + code segments without ReactMarkdown.
  * Closed and open fences both become code segments (open = incomplete).
  */
 export function parseStreamingSegments(content: string): StreamSegment[] {
   if (!content) return [];
 
-  const lines = content.split("\n");
+  const lines = expandColonDirectives(content).split("\n");
   const segments: StreamSegment[] = [];
   let textBuf: string[] = [];
   let inFence = false;
