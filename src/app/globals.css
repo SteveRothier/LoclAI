@@ -570,17 +570,47 @@ html[data-sidebar="open"] .sidebar-shell {
   stroke: #6b7280 !important;
 }
 
-/* Pie legend / title contrast */
 .mermaid-light .legend text,
 .mermaid-light .pieTitleText,
-.mermaid-light .titleText {
-  fill: #1a1a1a !important;
+.mermaid-light .titleText,
+.mermaid-light text {
+  fill: #1a1a1a;
 }
 
 .mermaid-dark .legend text,
 .mermaid-dark .pieTitleText,
-.mermaid-dark .titleText {
+.mermaid-dark .titleText,
+.mermaid-dark .mermaid-host text {
   fill: #f5f5f5 !important;
+}
+
+/* Architecture / block: readable labels on both themes */
+.mermaid-light .architecture-service,
+.mermaid-light .architecture-group,
+.mermaid-light .block-node rect,
+.mermaid-light .block .node rect {
+  stroke: #059669;
+}
+
+.mermaid-dark .architecture-service,
+.mermaid-dark .architecture-group,
+.mermaid-dark .block-node rect,
+.mermaid-dark .block .node rect {
+  stroke: #10b981;
+}
+
+.mermaid-light .nodeLabel,
+.mermaid-light .nodeLabel span,
+.mermaid-light .node foreignObject span,
+.mermaid-light .node foreignObject div {
+  color: #064e3b !important;
+}
+
+.mermaid-dark .nodeLabel,
+.mermaid-dark .nodeLabel span,
+.mermaid-dark .node foreignObject span,
+.mermaid-dark .node foreignObject div {
+  color: #ecfdf5 !important;
 }
 
 .prose-chat h1,

@@ -9,11 +9,14 @@ import {
   Minimize2,
   Minus,
   Plus,
+  RefreshCw,
   Workflow,
   X,
 } from "lucide-react";
 import {
   coerceMermaidSource,
+  convertBlockBetaToFlowchart,
+  detectDiagramKind,
   normalizeMermaidSource,
 } from "@/lib/chat/normalize-mermaid";
 import { applyMermaidNodePalette } from "@/lib/chat/mermaid-palette";
@@ -123,6 +126,7 @@ export function MermaidBlock({ code }: MermaidBlockProps) {
   const [copied, setCopied] = useState(false);
   const [showSource, setShowSource] = useState(false);
   const [errorDismissed, setErrorDismissed] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
   const [zoom, setZoom] = useState(1);
   const [expanded, setExpanded] = useState(false);
   const [natural, setNatural] = useState({ w: 0, h: 0 });
@@ -174,6 +178,31 @@ export function MermaidBlock({ code }: MermaidBlockProps) {
         if (cancelled) return;
 
         if (!coerced) {
+          const asFlow = convertBlockBetaToFlowchart(code);
+          if (asFlow) {
+            try {
+              await mermaid.parse(asFlow);
+              const { svg } = await mermaid.render(renderId, asFlow);
+              if (cancelled) {
+                removeMermaidArtifacts(renderId);
+                return;
+              }
+              host.innerHTML = svg;
+              const size = measureSvg(host);
+              setNatural(size);
+              setZoom(1);
+              setShowSource(false);
+              setRenderFor({
+                code,
+                source: normalizeMermaidSource(code),
+                status: "ready",
+                repaired: true,
+              });
+              return;
+            } catch {
+              removeMermaidArtifacts(renderId);
+            }
+          }
           setErrorDismissed(false);
           setNatural({ w: 0, h: 0 });
           setRenderFor({
@@ -195,6 +224,20 @@ export function MermaidBlock({ code }: MermaidBlockProps) {
           // Palette optional
         }
 
+        // block-beta often crashes mermaid.render under React — use flowchart SVG
+        const kind = detectDiagramKind(renderSource.split("\n"));
+        if (kind === "block") {
+          const asFlow = convertBlockBetaToFlowchart(renderSource);
+          if (asFlow) {
+            try {
+              await mermaid.parse(asFlow);
+              renderSource = asFlow;
+            } catch {
+              // keep block source; render may still fail → error UI
+            }
+          }
+        }
+
         const { svg } = await mermaid.render(renderId, renderSource);
         if (cancelled) {
           removeMermaidArtifacts(renderId);
@@ -213,6 +256,30 @@ export function MermaidBlock({ code }: MermaidBlockProps) {
         });
       } catch {
         removeMermaidArtifacts(renderId);
+        // Last chance: convert block → flowchart after a failed native render
+        try {
+          const asFlow = convertBlockBetaToFlowchart(code);
+          if (asFlow && !cancelled) {
+            const mermaid = await getMermaid(colorMode);
+            const { svg } = await mermaid.render(`${renderId}-fb`, asFlow);
+            if (!cancelled) {
+              host.innerHTML = svg;
+              const size = measureSvg(host);
+              setNatural(size);
+              setZoom(1);
+              setShowSource(false);
+              setRenderFor({
+                code,
+                source: normalizeMermaidSource(code),
+                status: "ready",
+                repaired: true,
+              });
+              return;
+            }
+          }
+        } catch {
+          removeMermaidArtifacts(`${renderId}-fb`);
+        }
         if (!cancelled) {
           setErrorDismissed(false);
           setNatural({ w: 0, h: 0 });
@@ -232,7 +299,7 @@ export function MermaidBlock({ code }: MermaidBlockProps) {
       cancelled = true;
       removeMermaidArtifacts(renderId);
     };
-  }, [code, reactId, colorMode]);
+  }, [code, reactId, colorMode, retryKey]);
 
   useEffect(() => {
     if (!expanded) return;
@@ -242,6 +309,23 @@ export function MermaidBlock({ code }: MermaidBlockProps) {
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [expanded]);
+
+  const handleRefresh = () => {
+    // Force a clean mermaid re-init on next render (theme/cache quirks)
+    mermaidMod = null;
+    mermaidMode = null;
+    setErrorDismissed(false);
+    setShowSource(false);
+    setZoom(1);
+    setNatural({ w: 0, h: 0 });
+    setRenderFor({
+      code,
+      source: normalizeMermaidSource(code),
+      status: "loading",
+      repaired: false,
+    });
+    setRetryKey((k) => k + 1);
+  };
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(source);
@@ -372,6 +456,18 @@ export function MermaidBlock({ code }: MermaidBlockProps) {
                     Code
                   </>
                 )}
+              </button>
+            )}
+            {status === "error" && (
+              <button
+                type="button"
+                title="Réessayer le rendu"
+                aria-label="Réessayer le rendu"
+                onClick={handleRefresh}
+                className={toolbarBtn}
+              >
+                <RefreshCw className="size-3.5" />
+                Refresh
               </button>
             )}
             <button

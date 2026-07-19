@@ -18,6 +18,10 @@ import {
 } from "@/components/chat/CodeBlock";
 import { MarkdownTable } from "@/components/chat/MarkdownTable";
 import { MermaidBlock } from "@/components/chat/MermaidBlock";
+import {
+  isMarkdownMistakenForMermaid,
+  isMermaidSegment,
+} from "@/lib/chat/mermaid-diagram-kinds";
 import { cn } from "@/lib/utils";
 
 type MarkdownContentProps = {
@@ -107,7 +111,11 @@ function Pre({ children }: { children?: React.ReactNode }) {
     const language = extractLanguage(className);
     const code = extractCodeText(codeEl.props.children);
 
-    if (language === "mermaid") {
+    if (isMarkdownMistakenForMermaid(language, code)) {
+      return <MarkdownContent content={code} />;
+    }
+
+    if (isMermaidSegment(language, code)) {
       return <MermaidBlock code={code} />;
     }
 

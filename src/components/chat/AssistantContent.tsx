@@ -3,6 +3,10 @@
 import { MarkdownContent } from "@/components/chat/MarkdownContent";
 import { MermaidBlock } from "@/components/chat/MermaidBlock";
 import { StreamingCodeBlock } from "@/components/chat/StreamingCodeBlock";
+import {
+  isMarkdownMistakenForMermaid,
+  isMermaidSegment,
+} from "@/lib/chat/mermaid-diagram-kinds";
 import { parseStreamingSegments } from "@/lib/chat/streaming-markdown";
 
 type AssistantContentProps = {
@@ -11,18 +15,9 @@ type AssistantContentProps = {
   mode?: "stream" | "final";
 };
 
-const MERMAID_DIAGRAM_START =
-  /^(graph|flowchart|sequencediagram|classdiagram|statediagram|erdiagram|gantt|pie|journey|gitgraph|mindmap|timeline|quadrantchart|sankey|xychart|block-beta|packet-beta|architecture)/i;
-
-function isMermaidSegment(language: string, code: string): boolean {
-  if (language.trim().toLowerCase() === "mermaid") return true;
-  const first = code.trim().split("\n")[0]?.trim() ?? "";
-  return MERMAID_DIAGRAM_START.test(first);
-}
-
 /**
  * Shared assistant body for streaming + persisted messages.
- * Mermaid fences (flowchart, gantt, sequence, …) use MermaidBlock — not hljs.
+ * Mermaid fences (all diagram kinds) use MermaidBlock — not hljs.
  */
 export function AssistantContent({
   content,
@@ -45,6 +40,9 @@ export function AssistantContent({
     <div className="prose-chat min-w-0 max-w-full overflow-x-hidden">
       {segments.map((seg, i) => {
         if (seg.kind === "code") {
+          if (isMarkdownMistakenForMermaid(seg.language, seg.code)) {
+            return <MarkdownContent key={`md-fence-${i}`} content={seg.code} />;
+          }
           if (isMermaidSegment(seg.language, seg.code)) {
             return <MermaidBlock key={`mermaid-${i}`} code={seg.code} />;
           }
