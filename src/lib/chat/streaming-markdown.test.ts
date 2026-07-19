@@ -43,4 +43,18 @@ describe("parseStreamingSegments", () => {
       },
     ]);
   });
+
+  it("parses mermaid fences as code segments", () => {
+    const content = ["```mermaid", "flowchart LR", "  A --> B", "```"].join(
+      "\n"
+    );
+    expect(parseStreamingSegments(content)).toEqual([
+      {
+        kind: "code",
+        language: "mermaid",
+        code: "flowchart LR\n  A --> B",
+        incomplete: false,
+      },
+    ]);
+  });
 });

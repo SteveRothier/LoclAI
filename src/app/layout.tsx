@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/components/layout/ThemeProvider";
 import { SerwistProvider } from "@/components/pwa/SerwistProvider";
 import "./globals.css";
 import "highlight.js/styles/github-dark.min.css";
+import "katex/dist/katex.min.css";
 
 const inter = Inter({
   variable: "--font-inter",
