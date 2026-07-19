@@ -341,12 +341,40 @@ html[data-sidebar="open"] .sidebar-shell {
   @apply max-w-none text-[0.9375rem] leading-relaxed text-foreground;
 }
 
-.prose-chat table {
-  display: block;
+.prose-chat table,
+.prose-chat .md-table-el {
+  display: table;
+  width: 100%;
   max-width: 100%;
-  overflow-x: auto;
   border-collapse: collapse;
-  margin-bottom: 0.75rem;
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
+.prose-chat .md-table-el thead th {
+  background: color-mix(in oklab, var(--muted) 80%, transparent);
+  color: var(--muted-foreground);
+  font-weight: 600;
+  text-align: left;
+  padding: 0.625rem 0.875rem;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+
+.prose-chat .md-table-el tbody td {
+  padding: 0.625rem 0.875rem;
+  border-bottom: 1px solid color-mix(in oklab, var(--border) 70%, transparent);
+  vertical-align: top;
+  color: var(--foreground);
+}
+
+.prose-chat .md-table-el tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.prose-chat .md-table-el tbody tr:hover td {
+  background: color-mix(in oklab, var(--muted) 35%, transparent);
 }
 
 .prose-chat p {

@@ -9,6 +9,7 @@ import {
   extractCodeText,
   extractLanguage,
 } from "@/components/chat/CodeBlock";
+import { MarkdownTable } from "@/components/chat/MarkdownTable";
 import { cn } from "@/lib/utils";
 
 type MarkdownContentProps = {
@@ -86,7 +87,7 @@ export function MarkdownContent({ content }: MarkdownContentProps) {
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeHighlight]}
-        components={{ pre: Pre, code: Code }}
+        components={{ pre: Pre, code: Code, table: MarkdownTable }}
       >
         {content}
       </ReactMarkdown>

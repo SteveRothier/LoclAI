@@ -17,11 +17,17 @@ import {
   fetchChatStream,
   formatModelNotFoundError,
   isModelAvailable,
+  mergeStreamMetrics,
   resolveStreamDisplayContent,
   type ChatStreamMetrics,
   type ChatStreamResult,
   type OllamaMessage,
 } from "@/lib/ollama/client";
+import {
+  appendContinuation,
+  buildEmptyMainContinuationMessages,
+  hasEmptyMainBlock,
+} from "@/lib/chat/incomplete-main";
 import { useConversationsRefreshStore } from "@/stores/conversations-store";
 import { useChatStore } from "@/stores/chat-store";
 import { useOllamaStore } from "@/stores/ollama-store";
@@ -91,15 +97,47 @@ async function streamUntilComplete(
     },
   });
 
-  const display = resolveStreamDisplayContent(result.content, result.thinking);
+  let content = result.content;
+  let thinking = result.thinking;
+  let aborted = result.aborted;
+  let metrics = result.metrics;
+
+  let display = resolveStreamDisplayContent(content, thinking);
   onToken(display);
 
-  return {
-    content: result.content,
-    thinking: result.thinking,
-    aborted: result.aborted,
-    metrics: result.metrics,
-  };
+  // One-shot only: model often stops right after empty `if __name__:`
+  if (!aborted && hasEmptyMainBlock(display)) {
+    const contMessages = buildEmptyMainContinuationMessages(
+      baseMessages,
+      display
+    );
+    const cont = await fetchChatStream({
+      baseUrl: endpointUrl,
+      model,
+      messages: contMessages,
+      signal,
+      numPredict,
+      onToken: (chunkContent) => {
+        onToken(
+          resolveStreamDisplayContent(
+            appendContinuation(content, chunkContent),
+            thinking
+          )
+        );
+      },
+    });
+
+    aborted = cont.aborted;
+    metrics = mergeStreamMetrics(metrics, cont.metrics);
+    content = appendContinuation(content, cont.content);
+    if (cont.thinking.trim()) {
+      thinking = appendContinuation(thinking, cont.thinking);
+    }
+    display = resolveStreamDisplayContent(content, thinking);
+    onToken(display);
+  }
+
+  return { content, thinking, aborted, metrics };
 }
 
 async function streamAssistantReply(
