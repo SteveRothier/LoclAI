@@ -3,53 +3,17 @@
  * Roles inferred from Mermaid shape (+ light label heuristics for actors).
  */
 
-export type MermaidNodeRole =
-  | "actor"
-  | "process"
-  | "decision"
-  | "database"
-  | "system";
+import {
+  getMermaidRolePalette,
+  type MermaidColorMode,
+  type MermaidNodeRole,
+  type MermaidSwatch,
+} from "@/lib/chat/mermaid-theme";
 
-export type MermaidSwatch = {
-  name: string;
-  fill: string;
-  stroke: string;
-  color: string;
-};
+export type { MermaidNodeRole, MermaidSwatch };
 
-/** Dark LoclAI theme, pastel-adjacent borders like ChatGPT role colors. */
-export const MERMAID_ROLE_PALETTE: Record<MermaidNodeRole, MermaidSwatch> = {
-  actor: {
-    name: "mActor",
-    fill: "#1e3a5f",
-    stroke: "#60a5fa",
-    color: "#eff6ff",
-  },
-  process: {
-    name: "mProcess",
-    fill: "#3b2a14",
-    stroke: "#fb923c",
-    color: "#fff7ed",
-  },
-  decision: {
-    name: "mDecision",
-    fill: "#3b1528",
-    stroke: "#f472b6",
-    color: "#fdf2f8",
-  },
-  database: {
-    name: "mDatabase",
-    fill: "#16352c",
-    stroke: "#34d399",
-    color: "#ecfdf5",
-  },
-  system: {
-    name: "mSystem",
-    fill: "#1f2937",
-    stroke: "#9ca3af",
-    color: "#f3f4f6",
-  },
-};
+/** @deprecated use getMermaidRolePalette("dark") */
+export const MERMAID_ROLE_PALETTE = getMermaidRolePalette("dark");
 
 const RESERVED = new Set([
   "graph",
@@ -222,7 +186,10 @@ export function extractFlowchartNodeIds(source: string): string[] {
 /**
  * Append classDef + class by semantic role (flowcharts only).
  */
-export function applyMermaidNodePalette(source: string): string {
+export function applyMermaidNodePalette(
+  source: string,
+  mode: MermaidColorMode = "dark"
+): string {
   const first = source.trim().split("\n")[0]?.trim().toLowerCase() ?? "";
   if (
     !first.startsWith("graph") &&
@@ -231,20 +198,21 @@ export function applyMermaidNodePalette(source: string): string {
     return source;
   }
 
+  const palette = getMermaidRolePalette(mode);
   const nodes = extractFlowchartNodes(source);
   if (nodes.length === 0) return source;
 
   const usedRoles = new Set(nodes.map((n) => n.role));
   const defs = [...usedRoles]
     .map((role) => {
-      const p = MERMAID_ROLE_PALETTE[role];
+      const p = palette[role];
       return `classDef ${p.name} fill:${p.fill},stroke:${p.stroke},color:${p.color},stroke-width:1.75px`;
     })
     .join("\n");
 
   const byClass = new Map<string, string[]>();
   for (const node of nodes) {
-    const className = MERMAID_ROLE_PALETTE[node.role].name;
+    const className = palette[node.role].name;
     const list = byClass.get(className) ?? [];
     list.push(node.id);
     byClass.set(className, list);

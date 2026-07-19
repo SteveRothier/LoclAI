@@ -17,6 +17,10 @@ import {
   normalizeMermaidSource,
 } from "@/lib/chat/normalize-mermaid";
 import { applyMermaidNodePalette } from "@/lib/chat/mermaid-palette";
+import {
+  getMermaidThemeVariables,
+  type MermaidColorMode,
+} from "@/lib/chat/mermaid-theme";
 import { cn } from "@/lib/utils";
 
 export { normalizeMermaidSource } from "@/lib/chat/normalize-mermaid";
@@ -31,72 +35,50 @@ const ZOOM_MIN = 0.5;
 const ZOOM_MAX = 2.5;
 const ZOOM_STEP = 0.25;
 
-let mermaidReady: Promise<typeof import("mermaid").default> | null = null;
+let mermaidMod: typeof import("mermaid").default | null = null;
+let mermaidMode: MermaidColorMode | null = null;
 
-async function getMermaid() {
-  if (!mermaidReady) {
-    mermaidReady = import("mermaid").then((mod) => {
-      const mermaid = mod.default;
-      mermaid.initialize({
-        startOnLoad: false,
-        securityLevel: "strict",
-        theme: "base",
-        suppressErrorRendering: true,
-        themeVariables: {
-          darkMode: true,
-          background: "#0d1117",
-          fontFamily:
-            "ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif",
-          fontSize: "15px",
-          primaryColor: "#16352c",
-          primaryTextColor: "#ecfdf5",
-          primaryBorderColor: "#10b981",
-          secondaryColor: "#1f2937",
-          secondaryTextColor: "#f3f4f6",
-          secondaryBorderColor: "#6b7280",
-          tertiaryColor: "#111827",
-          tertiaryTextColor: "#e5e7eb",
-          tertiaryBorderColor: "#4b5563",
-          mainBkg: "#16352c",
-          nodeBkg: "#16352c",
-          nodeBorder: "#10b981",
-          nodeTextColor: "#ecfdf5",
-          lineColor: "#9ca3af",
-          textColor: "#f3f4f6",
-          titleColor: "#f3f4f6",
-          edgeLabelBackground: "#161b22",
-          clusterBkg: "#111827",
-          clusterBorder: "#374151",
-          noteBkgColor: "#1f2937",
-          noteTextColor: "#f3f4f6",
-          noteBorderColor: "#6b7280",
-        },
-        flowchart: {
-          htmlLabels: true,
-          curve: "linear",
-          padding: 12,
-          nodeSpacing: 36,
-          rankSpacing: 48,
-          diagramPadding: 12,
-          useMaxWidth: false,
-          wrappingWidth: 200,
-        },
-        gantt: {
-          useMaxWidth: false,
-          barHeight: 32,
-          barGap: 8,
-          topPadding: 50,
-          leftPadding: 100,
-          gridLineStartPadding: 16,
-          fontSize: 14,
-          sectionFontSize: 14,
-          numberSectionStyles: 2,
-        },
-      });
-      return mermaid;
-    });
+async function getMermaid(mode: MermaidColorMode) {
+  if (!mermaidMod) {
+    mermaidMod = (await import("mermaid")).default;
   }
-  return mermaidReady;
+  if (mermaidMode !== mode) {
+    mermaidMod.initialize({
+      startOnLoad: false,
+      securityLevel: "strict",
+      theme: "base",
+      suppressErrorRendering: true,
+      themeVariables: getMermaidThemeVariables(mode),
+      flowchart: {
+        htmlLabels: true,
+        curve: "linear",
+        padding: 12,
+        nodeSpacing: 36,
+        rankSpacing: 48,
+        diagramPadding: 12,
+        useMaxWidth: false,
+        wrappingWidth: 200,
+      },
+      gantt: {
+        useMaxWidth: false,
+        barHeight: 32,
+        barGap: 8,
+        topPadding: 50,
+        leftPadding: 100,
+        gridLineStartPadding: 16,
+        fontSize: 14,
+        sectionFontSize: 14,
+        numberSectionStyles: 4,
+      },
+    });
+    mermaidMode = mode;
+  }
+  return mermaidMod;
+}
+
+function readColorMode(): MermaidColorMode {
+  if (typeof document === "undefined") return "dark";
+  return document.documentElement.classList.contains("dark") ? "dark" : "light";
 }
 
 function removeMermaidArtifacts(id: string) {
@@ -144,6 +126,9 @@ export function MermaidBlock({ code }: MermaidBlockProps) {
   const [zoom, setZoom] = useState(1);
   const [expanded, setExpanded] = useState(false);
   const [natural, setNatural] = useState({ w: 0, h: 0 });
+  const [colorMode, setColorMode] = useState<MermaidColorMode>(() =>
+    readColorMode()
+  );
   const [renderFor, setRenderFor] = useState<{
     code: string;
     source: string;
@@ -162,6 +147,17 @@ export function MermaidBlock({ code }: MermaidBlockProps) {
     status === "error" && active && !errorDismissed;
 
   useEffect(() => {
+    const root = document.documentElement;
+    const sync = () => {
+      const next = readColorMode();
+      setColorMode((prev) => (prev === next ? prev : next));
+    };
+    const obs = new MutationObserver(sync);
+    obs.observe(root, { attributes: true, attributeFilter: ["class"] });
+    return () => obs.disconnect();
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
     const renderId = `mermaid-${reactId}-${Math.random().toString(36).slice(2, 9)}`;
 
@@ -171,7 +167,7 @@ export function MermaidBlock({ code }: MermaidBlockProps) {
       host.innerHTML = "";
 
       try {
-        const mermaid = await getMermaid();
+        const mermaid = await getMermaid(colorMode);
         const coerced = await coerceMermaidSource(code, (text) =>
           mermaid.parse(text)
         );
@@ -190,7 +186,7 @@ export function MermaidBlock({ code }: MermaidBlockProps) {
           return;
         }
 
-        const painted = applyMermaidNodePalette(coerced.source);
+        const painted = applyMermaidNodePalette(coerced.source, colorMode);
         let renderSource = coerced.source;
         try {
           await mermaid.parse(painted);
@@ -236,7 +232,7 @@ export function MermaidBlock({ code }: MermaidBlockProps) {
       cancelled = true;
       removeMermaidArtifacts(renderId);
     };
-  }, [code, reactId]);
+  }, [code, reactId, colorMode]);
 
   useEffect(() => {
     if (!expanded) return;
@@ -272,6 +268,7 @@ export function MermaidBlock({ code }: MermaidBlockProps) {
 
   const scaledW = natural.w > 0 ? natural.w * zoom : undefined;
   const scaledH = natural.h > 0 ? natural.h * zoom : undefined;
+  const isLight = colorMode === "light";
 
   return (
     <>
@@ -286,7 +283,7 @@ export function MermaidBlock({ code }: MermaidBlockProps) {
 
       {expanded && (
         <div
-          className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm"
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm dark:bg-black/70"
           aria-hidden
           onClick={() => setExpanded(false)}
         />
@@ -294,7 +291,8 @@ export function MermaidBlock({ code }: MermaidBlockProps) {
 
       <div
         className={cn(
-          "mermaid-block min-w-0 max-w-full overflow-hidden border border-border bg-[#0d1117]",
+          "mermaid-block min-w-0 max-w-full overflow-hidden border border-border",
+          isLight ? "mermaid-light bg-white" : "mermaid-dark bg-[#0f0f0f]",
           expanded
             ? "fixed left-1/2 top-1/2 z-50 flex max-h-[min(92vh,960px)] w-[min(96vw,1200px)] -translate-x-1/2 -translate-y-1/2 flex-col rounded-2xl shadow-2xl"
             : "relative my-4 rounded-xl"
@@ -434,20 +432,23 @@ export function MermaidBlock({ code }: MermaidBlockProps) {
           hidden={viewingSource || status !== "ready"}
           onWheel={onWheelZoom}
           className={cn(
-            "mermaid-viewport min-h-0 flex-1 overflow-auto",
-            expanded ? "p-4" : "max-h-[min(60vh,480px)] p-4"
+            "mermaid-viewport flex min-h-0 flex-1 justify-center overflow-auto",
+            expanded ? "items-center p-6" : "items-start p-5 max-h-[min(60vh,480px)]"
           )}
         >
           <div
+            className="relative shrink-0"
             style={{
               width: scaledW,
               height: scaledH,
-              position: "relative",
             }}
           >
             <div
               ref={hostRef}
-              className="mermaid-host absolute top-0 left-0 text-[#e6edf3]"
+              className={cn(
+                "mermaid-host absolute top-0 left-0",
+                isLight ? "text-foreground" : "text-[#ecfdf5]"
+              )}
               style={{
                 transform: `scale(${zoom})`,
                 transformOrigin: "top left",
@@ -459,7 +460,12 @@ export function MermaidBlock({ code }: MermaidBlockProps) {
         </div>
 
         {viewingSource && (
-          <pre className="m-0 max-h-[min(60vh,480px)] max-w-full flex-1 overflow-auto border-t border-border p-4 text-[0.8125rem] leading-relaxed text-[#e6edf3]">
+          <pre
+            className={cn(
+              "m-0 max-h-[min(60vh,480px)] max-w-full flex-1 overflow-auto border-t border-border p-4 text-[0.8125rem] leading-relaxed",
+              isLight ? "bg-muted/40 text-foreground" : "text-[#e6edf3]"
+            )}
+          >
             <code className="font-mono whitespace-pre-wrap">{source}</code>
           </pre>
         )}
