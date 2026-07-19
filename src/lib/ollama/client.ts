@@ -31,6 +31,8 @@ export type ChatStreamOptions = {
   messages: OllamaMessage[];
   signal?: AbortSignal;
   onToken: (content: string) => void;
+  /** Ollama num_predict. -1 = unlimited. */
+  numPredict?: number;
 };
 
 export type ChatStreamMetrics = {
@@ -41,16 +43,44 @@ export type ChatStreamMetrics = {
 
 export type ChatStreamResult = {
   content: string;
+  thinking: string;
   aborted: boolean;
+  doneReason?: string;
   metrics?: ChatStreamMetrics;
 };
 
-export type ChatOnceOptions = {
-  baseUrl: string;
-  model: string;
-  messages: OllamaMessage[];
-  signal?: AbortSignal;
-};
+/** Unlimited completion length; give enough context room for long replies. */
+export const DEFAULT_CHAT_OPTIONS = {
+  num_predict: -1,
+  num_ctx: 16384,
+} as const;
+
+export {
+  appendWithoutOverlap,
+  buildContinuationMessages,
+  extractRequestedMinLines,
+  hasIncompleteMainBlock,
+  hasUnclosedMarkdownFence,
+  isRedundantContinuation,
+  looksTruncated,
+  MAX_STREAM_CONTINUATIONS,
+  resolveStreamDisplayContent,
+  shouldContinueGeneration,
+  userAskedForLongOutput,
+} from "@/lib/chat/completion";
+
+export function mergeStreamMetrics(
+  a?: ChatStreamMetrics,
+  b?: ChatStreamMetrics
+): ChatStreamMetrics | undefined {
+  if (!a) return b;
+  if (!b) return a;
+  return {
+    promptTokens: a.promptTokens + b.promptTokens,
+    completionTokens: a.completionTokens + b.completionTokens,
+    durationMs: a.durationMs + b.durationMs,
+  };
+}
 
 export function isModelAvailable(
   model: string,
@@ -337,15 +367,51 @@ export function extractStreamMetrics(chunk: {
   };
 }
 
+function applyStreamChunk(
+  chunk: {
+    message?: { content?: string; thinking?: string };
+    done?: boolean;
+    done_reason?: string;
+    prompt_eval_count?: number;
+    eval_count?: number;
+    eval_duration?: number;
+  },
+  state: { content: string; thinking: string; doneReason?: string },
+  onToken: (content: string) => void
+): ChatStreamMetrics | undefined {
+  const thinkingToken = chunk.message?.thinking ?? "";
+  if (thinkingToken) {
+    state.thinking += thinkingToken;
+  }
+
+  const token = chunk.message?.content ?? "";
+  if (token) {
+    state.content += token;
+    onToken(state.content);
+  }
+
+  if (chunk.done) {
+    if (chunk.done_reason) {
+      state.doneReason = chunk.done_reason;
+    }
+    return extractStreamMetrics(chunk);
+  }
+  return undefined;
+}
+
 export async function fetchChatStream({
   baseUrl,
   model,
   messages,
   signal,
   onToken,
+  numPredict = DEFAULT_CHAT_OPTIONS.num_predict,
 }: ChatStreamOptions): Promise<ChatStreamResult> {
   const url = effectiveOllamaEndpoint(baseUrl);
-  let content = "";
+  const state: { content: string; thinking: string; doneReason?: string } = {
+    content: "",
+    thinking: "",
+  };
 
   const response = await fetch(`${url}/api/chat`, {
     method: "POST",
@@ -354,6 +420,10 @@ export async function fetchChatStream({
       model,
       messages,
       stream: true,
+      options: {
+        ...DEFAULT_CHAT_OPTIONS,
+        num_predict: numPredict,
+      },
     }),
     signal,
   });
@@ -371,6 +441,25 @@ export async function fetchChatStream({
   let buffer = "";
   let metrics: ChatStreamMetrics | undefined;
 
+  const consumeLine = (line: string) => {
+    const trimmed = line.trim();
+    if (!trimmed) return;
+
+    try {
+      const chunk = JSON.parse(trimmed) as {
+        message?: { content?: string; thinking?: string };
+        done?: boolean;
+        done_reason?: string;
+        prompt_eval_count?: number;
+        eval_count?: number;
+        eval_duration?: number;
+      };
+      metrics = applyStreamChunk(chunk, state, onToken) ?? metrics;
+    } catch {
+      // ignore malformed partial lines
+    }
+  };
+
   try {
     while (true) {
       const { done, value } = await reader.read();
@@ -381,39 +470,42 @@ export async function fetchChatStream({
       buffer = lines.pop() ?? "";
 
       for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed) continue;
-
-        try {
-          const chunk = JSON.parse(trimmed) as {
-            message?: { content?: string };
-            done?: boolean;
-            prompt_eval_count?: number;
-            eval_count?: number;
-            eval_duration?: number;
-          };
-          const token = chunk.message?.content ?? "";
-          if (token) {
-            content += token;
-            onToken(content);
-          }
-          if (chunk.done) {
-            metrics = extractStreamMetrics(chunk) ?? metrics;
-          }
-        } catch {
-          // ignore malformed partial lines
-        }
+        consumeLine(line);
       }
+    }
+
+    buffer += decoder.decode();
+    if (buffer.trim()) {
+      consumeLine(buffer);
     }
   } catch (error) {
     if (signal?.aborted) {
-      return { content, aborted: true, metrics };
+      return {
+        content: state.content,
+        thinking: state.thinking,
+        aborted: true,
+        doneReason: state.doneReason,
+        metrics,
+      };
     }
     throw error;
   }
 
-  return { content, aborted: false, metrics };
+  return {
+    content: state.content,
+    thinking: state.thinking,
+    aborted: false,
+    doneReason: state.doneReason,
+    metrics,
+  };
 }
+
+export type ChatOnceOptions = {
+  baseUrl: string;
+  model: string;
+  messages: OllamaMessage[];
+  signal?: AbortSignal;
+};
 
 export async function fetchChatOnce({
   baseUrl,
@@ -430,6 +522,7 @@ export async function fetchChatOnce({
       model,
       messages,
       stream: false,
+      options: DEFAULT_CHAT_OPTIONS,
     }),
     signal,
   });

@@ -3,6 +3,7 @@ import {
   extractStreamMetrics,
   formatModelNotFoundError,
   isModelAvailable,
+  resolveStreamDisplayContent,
   type OllamaModel,
 } from "@/lib/ollama/client";
 import { isModelInstalled } from "@/lib/ollama/library";
@@ -62,5 +63,19 @@ describe("extractStreamMetrics", () => {
 
   it("returns undefined when metrics are missing", () => {
     expect(extractStreamMetrics({})).toBeUndefined();
+  });
+});
+
+describe("resolveStreamDisplayContent", () => {
+  it("prefers content over thinking", () => {
+    expect(resolveStreamDisplayContent("Réponse", "raisonnement")).toBe("Réponse");
+  });
+
+  it("falls back to thinking when content is empty", () => {
+    expect(resolveStreamDisplayContent("  ", "raisonnement")).toBe("raisonnement");
+  });
+
+  it("returns empty string when both are blank", () => {
+    expect(resolveStreamDisplayContent("", "   ")).toBe("");
   });
 });

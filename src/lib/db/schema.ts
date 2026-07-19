@@ -41,6 +41,8 @@ export type AppSettings = {
   defaultSystemPrompt: string;
   disabledModels: string[];
   maxContextMessages: number;
+  /** Max tokens to generate per reply. -1 = unlimited (Ollama num_predict). */
+  maxPredictTokens: number;
   personas: Persona[];
 };
 
@@ -113,6 +115,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   defaultSystemPrompt: DEFAULT_PERSONAS[0].systemPrompt,
   disabledModels: [],
   maxContextMessages: 40,
+  maxPredictTokens: -1,
   personas: DEFAULT_PERSONAS,
 };
 
@@ -132,6 +135,10 @@ export async function getSettings(): Promise<AppSettings> {
     ...existing,
     disabledModels: existing?.disabledModels ?? [],
     maxContextMessages: existing?.maxContextMessages ?? DEFAULT_SETTINGS.maxContextMessages,
+    maxPredictTokens:
+      typeof existing?.maxPredictTokens === "number"
+        ? existing.maxPredictTokens
+        : DEFAULT_SETTINGS.maxPredictTokens,
     personas:
       existing?.personas && existing.personas.length > 0
         ? existing.personas
