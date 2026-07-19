@@ -14,18 +14,10 @@ import {
 import { buildOllamaMessages } from "@/lib/chat/context";
 import { generateConversationTitle } from "@/lib/chat/title";
 import {
-  appendWithoutOverlap,
-  buildContinuationMessages,
-  extractRequestedMinLines,
   fetchChatStream,
   formatModelNotFoundError,
   isModelAvailable,
-  isRedundantContinuation,
-  mergeStreamMetrics,
   resolveStreamDisplayContent,
-  shouldContinueGeneration,
-  userAskedForLongOutput,
-  MAX_STREAM_CONTINUATIONS,
   type ChatStreamMetrics,
   type ChatStreamResult,
   type OllamaMessage,
@@ -88,67 +80,26 @@ async function streamUntilComplete(
   aborted: boolean;
   metrics?: ChatStreamMetrics;
 }> {
-  let messages = baseMessages;
-  let content = "";
-  let thinking = "";
-  let metrics: ChatStreamMetrics | undefined;
-  let aborted = false;
-  let doneReason: string | undefined;
-  let previousLength = 0;
+  const result = await fetchChatStream({
+    baseUrl: endpointUrl,
+    model,
+    messages: baseMessages,
+    signal,
+    numPredict,
+    onToken: (chunkContent) => {
+      onToken(resolveStreamDisplayContent(chunkContent, ""));
+    },
+  });
 
-  const wantsLong = userAskedForLongOutput(baseMessages);
-  const minCodeLines = extractRequestedMinLines(baseMessages);
+  const display = resolveStreamDisplayContent(result.content, result.thinking);
+  onToken(display);
 
-  for (let round = 0; round <= MAX_STREAM_CONTINUATIONS; round++) {
-    const result = await fetchChatStream({
-      baseUrl: endpointUrl,
-      model,
-      messages,
-      signal,
-      numPredict,
-      onToken: (chunkContent) => {
-        const combined =
-          round === 0 ? chunkContent : content + chunkContent;
-        onToken(combined);
-      },
-    });
-
-    aborted = result.aborted;
-    doneReason = result.doneReason;
-    metrics = mergeStreamMetrics(metrics, result.metrics);
-
-    if (round === 0) {
-      content = result.content;
-      thinking = result.thinking;
-    } else {
-      if (isRedundantContinuation(content, result.content)) break;
-      content = appendWithoutOverlap(content, result.content);
-      if (result.thinking.trim()) {
-        thinking = appendWithoutOverlap(thinking, result.thinking);
-      }
-    }
-
-    if (aborted) break;
-
-    const displaySoFar = resolveStreamDisplayContent(content, thinking);
-    onToken(displaySoFar);
-
-    const keepGoing = shouldContinueGeneration(displaySoFar, doneReason, round, {
-      wantsLong,
-      minCodeLines,
-    });
-    if (!keepGoing) break;
-
-    if (round > 0 && displaySoFar.length <= previousLength) break;
-    previousLength = displaySoFar.length;
-
-    if (round === MAX_STREAM_CONTINUATIONS) break;
-    if (!result.content.trim() && !result.thinking.trim()) break;
-
-    messages = buildContinuationMessages(baseMessages, displaySoFar);
-  }
-
-  return { content, thinking, aborted, metrics };
+  return {
+    content: result.content,
+    thinking: result.thinking,
+    aborted: result.aborted,
+    metrics: result.metrics,
+  };
 }
 
 async function streamAssistantReply(
@@ -203,6 +154,13 @@ async function streamAssistantReply(
         assistantContent,
         result.metrics
       );
+      useConversationsRefreshStore.getState().bump();
+      // Let Dexie live query paint the persisted bubble before removing the stream
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => resolve());
+        });
+      });
     }
 
     return { content: assistantContent, aborted };
@@ -287,7 +245,7 @@ export function useChatActions(conversationId: string | null) {
   );
 
   const regenerateFrom = useCallback(
-    async (assistantMessageId: string) => {
+    async (messageId: string) => {
       if (!conversationId || !online) return;
       if (!tryBeginRequest()) return;
 
@@ -303,11 +261,18 @@ export function useChatActions(conversationId: string | null) {
         }
 
         const allMessages = await getMessages(conversationId);
-        const targetIndex = allMessages.findIndex((m) => m.id === assistantMessageId);
-        if (targetIndex <= 0) return;
+        const targetIndex = allMessages.findIndex((m) => m.id === messageId);
+        if (targetIndex < 0) return;
 
         const target = allMessages[targetIndex];
-        await deleteMessagesAfter(conversationId, target.createdAt - 1);
+        if (target.role === "assistant") {
+          if (targetIndex <= 0) return;
+          // Remove this assistant reply and everything after, then regenerate
+          await deleteMessagesAfter(conversationId, target.createdAt - 1);
+        } else {
+          // Keep the user message; remove following replies and regenerate
+          await deleteMessagesAfter(conversationId, target.createdAt);
+        }
 
         await streamAssistantReply(conversationId, conversation, endpointUrl);
       } catch (error) {

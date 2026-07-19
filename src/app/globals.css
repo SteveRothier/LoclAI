@@ -318,13 +318,15 @@ html[data-sidebar="open"] .sidebar-shell {
   }
 }
 
-/* Code blocks (ChatGPT-style) */
+/* Code blocks (ChatGPT-style) — shared by stream + final markdown */
+.code-block pre.code-block-pre,
 .prose-chat .code-block pre.code-block-pre {
   margin: 0;
   background: #0d1117;
   color: #e6edf3;
 }
 
+.code-block pre.code-block-pre code.hljs,
 .prose-chat .code-block pre.code-block-pre code.hljs {
   display: block;
   background: transparent !important;
@@ -337,6 +339,14 @@ html[data-sidebar="open"] .sidebar-shell {
 
 .prose-chat {
   @apply max-w-none text-[0.9375rem] leading-relaxed text-foreground;
+}
+
+.prose-chat table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+  margin-bottom: 0.75rem;
 }
 
 .prose-chat p {
@@ -360,16 +370,19 @@ html[data-sidebar="open"] .sidebar-shell {
   @apply rounded bg-muted px-1.5 py-0.5 font-mono text-sm;
 }
 
-.prose-chat .code-block-pre {
+.prose-chat .code-block-pre,
+.code-block .code-block-pre {
   scrollbar-width: thin;
   scrollbar-color: #30363d transparent;
 }
 
-.prose-chat .code-block-pre::-webkit-scrollbar {
+.prose-chat .code-block-pre::-webkit-scrollbar,
+.code-block .code-block-pre::-webkit-scrollbar {
   height: 6px;
 }
 
-.prose-chat .code-block-pre::-webkit-scrollbar-thumb {
+.prose-chat .code-block-pre::-webkit-scrollbar-thumb,
+.code-block .code-block-pre::-webkit-scrollbar-thumb {
   background: #30363d;
   border-radius: 3px;
 }

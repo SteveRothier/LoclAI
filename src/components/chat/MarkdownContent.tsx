@@ -21,15 +21,20 @@ type CodeProps = React.ComponentProps<"code"> & {
 };
 
 function Pre({ children }: { children?: React.ReactNode }) {
-  const child = Children.only(children);
+  const childArray = Children.toArray(children);
+  const child = childArray.length === 1 ? childArray[0] : null;
 
   if (
+    child &&
     isValidElement(child) &&
     typeof child.props === "object" &&
     child.props !== null &&
     "className" in child.props
   ) {
-    const codeEl = child as ReactElement<{ className?: string; children?: React.ReactNode }>;
+    const codeEl = child as ReactElement<{
+      className?: string;
+      children?: React.ReactNode;
+    }>;
     const className = codeEl.props.className ?? "";
 
     if (className.includes("hljs")) {
@@ -44,7 +49,13 @@ function Pre({ children }: { children?: React.ReactNode }) {
     }
   }
 
-  return <pre className="mb-3 overflow-x-auto rounded-lg">{children}</pre>;
+  return (
+    <div className="my-4 min-w-0 max-w-full overflow-hidden rounded-xl border border-border">
+      <pre className="m-0 max-w-full overflow-x-auto p-4 text-[0.8125rem] leading-relaxed">
+        {children}
+      </pre>
+    </div>
+  );
 }
 
 function Code({ inline, className, children, ...props }: CodeProps) {
@@ -71,7 +82,7 @@ function Code({ inline, className, children, ...props }: CodeProps) {
 
 export function MarkdownContent({ content }: MarkdownContentProps) {
   return (
-    <div className="prose-chat">
+    <div className="prose-chat min-w-0 max-w-full overflow-x-hidden">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeHighlight]}

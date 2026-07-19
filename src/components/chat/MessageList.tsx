@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { MessageBubble, StreamingBubble } from "@/components/chat/MessageBubble";
+import { StreamErrorBoundary } from "@/components/chat/StreamErrorBoundary";
 import { CHAT_CONTENT_CLASS, CHAT_PADDING_CLASS } from "@/lib/chat-layout";
 import { cn } from "@/lib/utils";
 import type { Message } from "@/lib/db/schema";
@@ -25,10 +26,12 @@ export function MessageList({
   onRegenerate,
   disabled = false,
 }: MessageListProps) {
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    const el = containerRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
   }, [messages, streamingContent, streaming]);
 
   if (messages.length === 0 && !streaming) {
@@ -49,12 +52,13 @@ export function MessageList({
 
   return (
     <div
+      ref={containerRef}
       className={cn(
-        "flex flex-1 flex-col overflow-y-auto py-6 scrollbar-thin sm:py-8",
+        "flex min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden py-6 scrollbar-thin sm:py-8",
         CHAT_PADDING_CLASS
       )}
     >
-      <div className={cn(CHAT_CONTENT_CLASS, "flex flex-col gap-6")}>
+      <div className={cn(CHAT_CONTENT_CLASS, "flex min-w-0 flex-col gap-6")}>
         {messages.map((message) => (
           <MessageBubble
             key={message.id}
@@ -66,15 +70,19 @@ export function MessageList({
                 ? (newContent) => onEdit(message.id, newContent)
                 : undefined
             }
-            onRegenerate={
-              message.role === "assistant"
-                ? () => onRegenerate(message.id)
-                : undefined
-            }
+            onRegenerate={() => onRegenerate(message.id)}
           />
         ))}
-        {streaming && <StreamingBubble content={streamingContent} />}
-        <div ref={bottomRef} />
+        {streaming &&
+          !(
+            streamingContent &&
+            messages[messages.length - 1]?.role === "assistant" &&
+            messages[messages.length - 1]?.content === streamingContent
+          ) && (
+            <StreamErrorBoundary content={streamingContent}>
+              <StreamingBubble content={streamingContent} />
+            </StreamErrorBoundary>
+          )}
       </div>
     </div>
   );

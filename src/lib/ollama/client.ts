@@ -55,19 +55,15 @@ export const DEFAULT_CHAT_OPTIONS = {
   num_ctx: 16384,
 } as const;
 
-export {
-  appendWithoutOverlap,
-  buildContinuationMessages,
-  extractRequestedMinLines,
-  hasIncompleteMainBlock,
-  hasUnclosedMarkdownFence,
-  isRedundantContinuation,
-  looksTruncated,
-  MAX_STREAM_CONTINUATIONS,
-  resolveStreamDisplayContent,
-  shouldContinueGeneration,
-  userAskedForLongOutput,
-} from "@/lib/chat/completion";
+/** Prefer final answer content; fall back to thinking trace if content is empty. */
+export function resolveStreamDisplayContent(
+  content: string,
+  thinking: string
+): string {
+  if (content.trim()) return content;
+  if (thinking.trim()) return thinking;
+  return "";
+}
 
 export function mergeStreamMetrics(
   a?: ChatStreamMetrics,

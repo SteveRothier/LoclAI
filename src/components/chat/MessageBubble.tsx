@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Check, Copy, Pencil, RotateCcw, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { MarkdownContent } from "@/components/chat/MarkdownContent";
+import { AssistantContent } from "@/components/chat/AssistantContent";
 import { formatMessageMetrics } from "@/lib/chat/metrics";
 import { Loader } from "@/components/ui/loader";
 import { cn } from "@/lib/utils";
@@ -84,7 +84,7 @@ export function MessageBubble({
   return (
     <div
       className={cn(
-        "group flex w-full",
+        "group flex min-w-0 w-full",
         isUser ? "justify-end" : "justify-start"
       )}
     >
@@ -144,12 +144,14 @@ export function MessageBubble({
           )
         ) : (
           <>
-            <MarkdownContent content={message.content} />
-            {message.metrics && (
-              <p className="mt-1 text-xs text-muted-foreground">
-                {formatMessageMetrics(message.metrics)}
-              </p>
-            )}
+            <AssistantContent content={message.content} mode="final" />
+            <div className="mt-1 min-h-4">
+              {message.metrics ? (
+                <p className="text-xs text-muted-foreground">
+                  {formatMessageMetrics(message.metrics)}
+                </p>
+              ) : null}
+            </div>
           </>
         )}
 
@@ -179,7 +181,7 @@ export function MessageBubble({
                 <Pencil className="size-3.5" />
               </Button>
             )}
-            {!isUser && onRegenerate && (
+            {onRegenerate && (
               <Button
                 type="button"
                 variant="ghost"
@@ -200,16 +202,24 @@ export function MessageBubble({
 }
 
 export function StreamingBubble({ content }: { content: string }) {
-  return (
-    <div className="flex w-full justify-start">
-      <div className="min-w-0 w-full max-w-full px-0 py-1 sm:px-1">
-        {content ? (
-          <MarkdownContent content={content} />
-        ) : (
+  if (!content) {
+    return (
+      <div className="flex min-w-0 w-full justify-start">
+        <div className="min-w-0 w-full max-w-full overflow-hidden px-0 py-1 sm:px-1">
           <div className="py-2">
             <Loader variant="ellipsis" size="md" tone="primary" />
           </div>
-        )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex min-w-0 w-full justify-start">
+      <div className="min-w-0 w-full max-w-full overflow-hidden px-0 py-1 sm:px-1">
+        <AssistantContent content={content} mode="stream" />
+        {/* Same footprint as metrics line on the final bubble */}
+        <div className="mt-1 min-h-4" aria-hidden />
       </div>
     </div>
   );
